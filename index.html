@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Небесный рубеж — оборона заводов</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰</text></svg>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
   :root {
     --bg: #0c1016;
@@ -104,16 +105,58 @@
     position: relative;
     flex: 1;
     min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     background: #05070b;
+    overflow: hidden;
+  }
+  #leafletMap {
+    position: absolute;
+    inset: 0;
+    background: #0a0e12;
+    filter: saturate(0.7) brightness(0.55) contrast(1.1);
   }
   canvas {
+    position: absolute;
+    inset: 0;
     display: block;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     cursor: crosshair;
+    pointer-events: none;
+    background: transparent;
+  }
+  canvas.gameplay-active { pointer-events: auto; }
+
+  #regionHint {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 27, 36, .92);
+    border: 1px solid var(--panel-border);
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 6;
+    white-space: nowrap;
+    pointer-events: none;
+    display: none;
+  }
+  #regionHint.show { display: block; }
+  .region-pin {
+    background: var(--danger);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    box-shadow: 0 0 0 4px rgba(255,95,95,0.3);
+  }
+  .leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); }
+  .leaflet-popup-tip { background: var(--panel); }
+  .leaflet-popup-content button {
+    background: var(--accent); border: none; color: #06121f; font-weight: 700;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-top: 4px;
   }
   #banner {
     position: absolute;
@@ -251,9 +294,11 @@
     </div>
   </header>
   <div id="wrap">
+    <div id="leafletMap"></div>
     <canvas id="game" width="1350" height="700"></canvas>
+    <div id="regionHint">Кликните по маркеру региона, чтобы выбрать его, и подтвердите в подсказке</div>
     <div id="banner"></div>
-    <div id="hint">Выберите постройку сверху и кликните по карте России, чтобы разместить</div>
+    <div id="hint">Выберите постройку сверху и кликните по карте, чтобы разместить</div>
     <div id="overlay">
       <h2>Экономика рухнула</h2>
       <p class="score" id="finalScore"></p>
@@ -270,6 +315,7 @@
           <li><b class="pvo">📡 ПВО</b> и <b class="interceptor">✈ Истребитель</b> — сбивают дроны, но сами жгут топливо с ближайшей АЗС. Кончилось топливо — не стреляют и не летают.</li>
           <li>Порвётся любое звено цепочки НПЗ→АЗС→грузовики — экономика посыплется. Стройте с запасом.</li>
           <li>За каждый сбитый дрон — <b style="color:var(--money)">+5 монет</b>, кем бы он ни был сбит.</li>
+          <li>Карта — настоящая (OpenStreetMap). После выбора сложности кликните на маркер региона на карте — игра начнётся именно там, а дроны полетят с реального направления Украины.</li>
         </ul>
         <div class="diff-row" id="diffRow">
           <button class="diff-btn" id="diffEasy" data-diff="easy">
@@ -282,11 +328,12 @@
             <span class="dname">Сложно</span><span class="ddesc">Меньше денег, дроны злее</span>
           </button>
         </div>
-        <button class="plain-btn" id="btnStart" style="width:100%;font-size:15px;padding:12px;">Начать игру</button>
+        <button class="plain-btn" id="btnStart" style="width:100%;font-size:15px;padding:12px;">Выбрать регион на карте</button>
       </div>
     </div>
   </div>
 </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="game.js"></script>
 </body>
 </html>

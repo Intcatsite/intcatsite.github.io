@@ -6,7 +6,6 @@
   const W = canvas.width;
   const H = canvas.height;
 
-  const BORDER_X = 195; // right edge of the Ukraine strip / left edge of placeable Russia zone
   const TOP_MARGIN = 30;
   const BOTTOM_MARGIN = 30;
   const MIN_BUILD_DIST = 50;
@@ -78,84 +77,124 @@
   let lastTime = 0;
   let bannerTimer = 0;
 
-  // ---------- map: real Russia SVG loaded as an image ----------
+  // ---------- live map: Leaflet + OpenStreetMap, region picker ----------
 
-  const MAP_SCALE = (W - BORDER_X) / 1650; // russia-map.svg viewBox is 1650x1000
-  const mapImg = new Image();
-  let mapReady = false;
-  mapImg.onload = () => { mapReady = true; };
-  mapImg.src = "russia-map.svg";
-
-  const FRONT_LABELS = [
-    { name: "Брянская обл.", x: 92, y: 573 },
-    { name: "Курская обл.", x: 100, y: 618 },
-    { name: "Белгородская обл.", x: 95, y: 652 },
-    { name: "Воронежская обл.", x: 135, y: 665 },
-    { name: "Ростовская обл.", x: 95, y: 745 },
-    { name: "Краснодарский край", x: 35, y: 765 },
-    { name: "Калининградская обл.", x: 25, y: 417 },
-    { name: "Сахалин", x: 1500, y: 660 },
+  const UKRAINE_CENTER = { lat: 48.3794, lng: 31.1656 };
+  const REGIONS = [
+    { name: "Брянская область", lat: 53.2521, lng: 34.3717, front: true },
+    { name: "Курская область", lat: 51.7373, lng: 36.1874, front: true },
+    { name: "Белгородская область", lat: 50.5977, lng: 36.5858, front: true },
+    { name: "Воронежская область", lat: 51.6720, lng: 39.1843, front: true },
+    { name: "Ростовская область", lat: 47.2357, lng: 39.7015, front: true },
+    { name: "Краснодарский край", lat: 45.0355, lng: 38.9753, front: true },
+    { name: "Калининградская область", lat: 54.7104, lng: 20.4522 },
+    { name: "Москва", lat: 55.7558, lng: 37.6173 },
+    { name: "Санкт-Петербург", lat: 59.9311, lng: 30.3609 },
+    { name: "Волгоградская область", lat: 48.7080, lng: 44.5133 },
+    { name: "Самарская область", lat: 53.2001, lng: 50.1500 },
+    { name: "Татарстан (Казань)", lat: 55.8304, lng: 49.0661 },
+    { name: "Свердловская область", lat: 56.8389, lng: 60.6057 },
+    { name: "Новосибирская область", lat: 55.0084, lng: 82.9357 },
+    { name: "Красноярский край", lat: 56.0184, lng: 92.8672 },
+    { name: "Иркутская область", lat: 52.2869, lng: 104.3050 },
+    { name: "Приморский край", lat: 43.1198, lng: 131.8869 },
+    { name: "Хабаровский край", lat: 48.4827, lng: 135.0838 },
+    { name: "Камчатский край", lat: 53.0195, lng: 158.6486 },
+    { name: "Мурманская область", lat: 68.9585, lng: 33.0827 },
   ];
+
+  const leafletMap = L.map("leafletMap", {
+    zoomControl: true, attributionControl: true,
+    minZoom: 3, maxZoom: 13,
+  }).setView([61, 70], 3);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap contributors",
+    maxZoom: 19,
+  }).addTo(leafletMap);
+
+  const pinIcon = L.divIcon({ className: "region-pin", iconSize: [14, 14] });
+  let pickedRegion = null;
+  let awaitingRegionPick = false;
+  const regionMarkers = [];
+
+  for (const r of REGIONS) {
+    const marker = L.marker([r.lat, r.lng], { icon: pinIcon }).addTo(leafletMap);
+    marker.bindPopup(`<b>${r.name}</b><br><button type="button">Играть здесь</button>`);
+    marker.on("popupopen", (e) => {
+      const btn = e.popup.getElement().querySelector("button");
+      btn.addEventListener("click", () => confirmRegion(r));
+    });
+    regionMarkers.push(marker);
+  }
+
+  function toRad(d) { return d * Math.PI / 180; }
+
+  function bearingTo(from, to) {
+    const phi1 = toRad(from.lat), phi2 = toRad(to.lat);
+    const dLambda = toRad(to.lng - from.lng);
+    const y = Math.sin(dLambda) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+    return Math.atan2(y, x); // radians, 0 = north, clockwise
+  }
+
+  function confirmRegion(region) {
+    if (!awaitingRegionPick) return;
+    pickedRegion = region;
+    leafletMap.closePopup();
+    for (const m of regionMarkers) leafletMap.removeLayer(m);
+    leafletMap.flyTo([region.lat, region.lng], 10, { duration: 1.2 });
+    document.getElementById("regionHint").classList.remove("show");
+    leafletMap.once("moveend", () => {
+      leafletMap.dragging.disable();
+      leafletMap.scrollWheelZoom.disable();
+      leafletMap.doubleClickZoom.disable();
+      leafletMap.touchZoom.disable();
+      leafletMap.boxZoom.disable();
+      leafletMap.keyboard.disable();
+      awaitingRegionPick = false;
+      beginMatch(region);
+    });
+  }
+
+  function beginMatch(region) {
+    resetGame();
+    state.approachBearing = bearingTo(region, UKRAINE_CENTER);
+    canvas.classList.add("gameplay-active");
+    started = true;
+    paused = false;
+  }
+
+  function drawCompass() {
+    const bearing = state.approachBearing || 0;
+    const cx = 60, cy = H - 60;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    ctx.arc(0, 0, 34, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(10,15,20,0.55)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.stroke();
+    ctx.rotate(bearing);
+    ctx.fillStyle = "#ff5f5f";
+    ctx.beginPath();
+    ctx.moveTo(0, -26);
+    ctx.lineTo(-8, -8);
+    ctx.lineTo(8, -8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillRect(-1.5, -8, 3, 20);
+    ctx.restore();
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Украина", cx, cy + 48);
+  }
 
   function drawMap() {
     ctx.clearRect(0, 0, W, H);
-
-    const grad = ctx.createLinearGradient(0, 0, BORDER_X, 0);
-    grad.addColorStop(0, "#1a2a4a");
-    grad.addColorStop(1, "#22344f");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, BORDER_X, H);
-
-    ctx.save();
-    ctx.translate(BORDER_X / 2, H / 2 + 40);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = "rgba(255,255,255,0.16)";
-    ctx.font = "bold 22px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("У К Р А И Н А", 0, 0);
-    ctx.restore();
-
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.lineWidth = 2;
-    for (let y = 60; y < H; y += 90) {
-      ctx.beginPath();
-      ctx.moveTo(30, y);
-      ctx.lineTo(BORDER_X - 30, y);
-      ctx.lineTo(BORDER_X - 40, y - 6);
-      ctx.moveTo(BORDER_X - 30, y);
-      ctx.lineTo(BORDER_X - 40, y + 6);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = "#0d140f";
-    ctx.fillRect(BORDER_X, 0, W - BORDER_X, H);
-
-    if (mapReady) {
-      ctx.drawImage(mapImg, BORDER_X, 0, W - BORDER_X, H);
-    } else {
-      ctx.fillStyle = "rgba(255,255,255,0.3)";
-      ctx.font = "16px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("Загрузка карты…", BORDER_X + (W - BORDER_X) / 2, H / 2);
-    }
-
-    ctx.strokeStyle = "rgba(255,255,255,0.22)";
-    ctx.setLineDash([8, 6]);
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(BORDER_X, 0); ctx.lineTo(BORDER_X, H); ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.textAlign = "center";
-    ctx.font = "bold 12px sans-serif";
-    ctx.fillStyle = "rgba(255,210,160,0.95)";
-    for (const r of FRONT_LABELS) {
-      ctx.fillText(r.name, BORDER_X + r.x * MAP_SCALE, r.y * MAP_SCALE);
-    }
-
-    ctx.font = "bold 26px sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.16)";
-    ctx.textAlign = "left";
-    ctx.fillText("Р О С С И Я", BORDER_X + 24, H - 20);
+    if (started) drawCompass();
   }
 
   // ---------- state ----------
@@ -164,6 +203,7 @@
     const diff = DIFFICULTIES[selectedDifficulty];
     return {
       diff,
+      approachBearing: 0,
       money: diff.startMoney,
       totalEarned: diff.startMoney,
       wave: 1,
@@ -215,7 +255,7 @@
   }
 
   function canPlaceAt(x, y) {
-    if (x < BORDER_X + 30 || x > W - 30) return false;
+    if (x < 30 || x > W - 30) return false;
     if (y < TOP_MARGIN + 10 || y > H - BOTTOM_MARGIN - 10) return false;
     const all = [
       ...state.factories, ...state.npzs, ...state.azsList, ...state.shops,
@@ -331,8 +371,6 @@
   // ---------- spawning ----------
 
   function spawnDrone() {
-    const y = TOP_MARGIN + 40 + Math.random() * (H - TOP_MARGIN - BOTTOM_MARGIN - 80);
-    const x = 30;
     const wave = state.wave;
     const diff = state.diff;
     const speed = Math.min(diff.speedBase + wave * diff.speedPerWave, diff.speedCap);
@@ -345,6 +383,14 @@
     for (const b of state.shops) candidates.push({ kind: "shop", b, w: 1 });
     if (!candidates.length) return;
     const pick = weightedPick(candidates);
+
+    // spawn just off-screen in the real compass direction of Ukraine relative to the chosen region
+    const cx = W / 2, cy = H / 2;
+    const R = Math.hypot(W, H) / 2 + 60;
+    const jitter = (Math.random() - 0.5) * 0.5;
+    const bearing = state.approachBearing + jitter;
+    const x = cx + R * Math.sin(bearing);
+    const y = cy - R * Math.cos(bearing);
 
     state.drones.push({
       id: state.nextId++, x, y, speed, hp, maxHp: hp,
@@ -933,6 +979,7 @@
 
   function doRestart() {
     resetGame();
+    if (pickedRegion) state.approachBearing = bearingTo(pickedRegion, UKRAINE_CENTER);
     paused = false;
     btnPause.textContent = "⏸ Пауза";
   }
@@ -941,9 +988,8 @@
 
   btnStart.addEventListener("click", () => {
     introEl.style.display = "none";
-    resetGame();
-    started = true;
-    paused = false;
+    document.getElementById("regionHint").classList.add("show");
+    awaitingRegionPick = true;
   });
 
   for (const key in diffButtons) {
