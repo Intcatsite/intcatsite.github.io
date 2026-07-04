@@ -1,73 +1,35 @@
-const NS = 'deeps:';
+const LS = 'deeps:';
 
-function read(key, fallback) {
-  try {
-    const raw = localStorage.getItem(NS + key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+function readLS(k, f) { try { const r = localStorage.getItem(LS + k); return r ? JSON.parse(r) : f; } catch { return f; } }
+function writeLS(k, v) { localStorage.setItem(LS + k, JSON.stringify(v)); }
+function readSS(k, f) { try { const r = sessionStorage.getItem(LS + k); return r ? JSON.parse(r) : f; } catch { return f; } }
+function writeSS(k, v) { sessionStorage.setItem(LS + k, JSON.stringify(v)); }
+function removeSS(k) { sessionStorage.removeItem(LS + k); }
 
-function write(key, value) {
-  localStorage.setItem(NS + key, JSON.stringify(value));
-}
+function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
-
-function defaultProviders() {
-  return [
-    {
-      id: 'openrouter',
-      name: 'OpenRouter',
-      kind: 'openrouter',
-      baseUrl: 'https://openrouter.ai/api/v1',
-      apiKey: '',
-      builtin: true,
-    },
-    {
-      id: 'routerai',
-      name: 'RouterAI.ru',
-      kind: 'custom',
-      baseUrl: '',
-      apiKey: '',
-      builtin: true,
-      hint: 'Впиши Base URL своего аккаунта RouterAI.ru (обычно заканчивается на /v1) — формат запросов OpenAI-совместимый.',
-    },
-  ];
-}
-
-function defaultModels() {
-  return [
-    {
-      id: 'deepseek-v4-flash',
-      providerId: 'openrouter',
-      modelId: 'deepseek/deepseek-v4-flash',
-      label: 'DeepSeek V4 Flash',
-      vision: false,
-      builtin: true,
-    },
-    {
-      id: 'deepseek-v4-pro',
-      providerId: 'openrouter',
-      modelId: 'deepseek/deepseek-v4-pro',
-      label: 'DeepSeek V4 Pro',
-      vision: false,
-      builtin: true,
-    },
-  ];
-}
+export const PRESETS = [
+  { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
+  { name: 'RouterAI.ru', baseUrl: '' },
+  { name: 'Свой', baseUrl: '' },
+];
 
 function defaultSettings() {
   return {
-    systemPrompt: 'Ты — Deeps, дружелюбный и полезный AI-ассистент на базе DeepSeek. Отвечай точно, структурировано и по делу.',
+    systemPrompt:
+      'Ты — Deeps, дружелюбный и полезный AI-ассистент на базе DeepSeek. Отвечай точно, структурированно и по делу.',
     contextSize: 20,
     thinkingSeconds: 60,
     thinkingPlusMinutes: 2,
     thinkingPlusMaxMinutes: 5,
-    search: { name: 'Tavily', baseUrl: 'https://api.tavily.com', apiKey: '' },
+    provider: {
+      presetName: 'OpenRouter',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      apiKey: '',
+      rememberKey: true,
+    },
+    visionEnabled: false,
+    search: { baseUrl: 'https://api.tavily.com', apiKey: '' },
     githubToken: '',
   };
 }
@@ -75,38 +37,29 @@ function defaultSettings() {
 export const Store = {
   uid,
 
-  getProviders() {
-    return read('providers', defaultProviders());
-  },
-  setProviders(v) {
-    write('providers', v);
-  },
+  getChats() { return readLS('chats', []); },
+  setChats(v) { writeLS('chats', v); },
 
-  getModels() {
-    return read('models', defaultModels());
-  },
-  setModels(v) {
-    write('models', v);
-  },
-
-  getChats() {
-    return read('chats', []);
-  },
-  setChats(v) {
-    write('chats', v);
-  },
-
-  getActiveChatId() {
-    return read('activeChatId', null);
-  },
-  setActiveChatId(v) {
-    write('activeChatId', v);
-  },
+  getActiveChatId() { return readLS('activeChatId', null); },
+  setActiveChatId(v) { writeLS('activeChatId', v); },
 
   getSettings() {
-    return { ...defaultSettings(), ...read('settings', {}) };
+    const s = { ...defaultSettings(), ...readLS('settings', {}) };
+    s.provider = { ...defaultSettings().provider, ...(s.provider || {}) };
+    s.search = { ...defaultSettings().search, ...(s.search || {}) };
+    const sessKey = readSS('apiKey', null);
+    if (sessKey !== null) s.provider.apiKey = sessKey;
+    return s;
   },
+
   setSettings(v) {
-    write('settings', v);
+    const clone = JSON.parse(JSON.stringify(v));
+    if (clone.provider && clone.provider.rememberKey === false) {
+      writeSS('apiKey', clone.provider.apiKey || '');
+      clone.provider.apiKey = '';
+    } else {
+      removeSS('apiKey');
+    }
+    writeLS('settings', clone);
   },
 };

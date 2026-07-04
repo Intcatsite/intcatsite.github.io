@@ -1,7 +1,17 @@
 import { Store } from './storage.js';
-import { toast, confirmDialog, escapeHtml } from './ui.js';
-import { getModels, getModelById } from './models.js';
-import { createChat, getAllChats, getActiveChat, setActiveChat, saveChat, deleteChat, sendMessage } from './chat.js';
+import { toast, confirmDialog, promptDialog, escapeHtml } from './ui.js';
+import { injectIcons, iconSvg } from './icons.js';
+import { listModels, getModelById } from './models.js';
+import {
+  createChat,
+  getAllChats,
+  getActiveChat,
+  setActiveChat,
+  saveChat,
+  deleteChat,
+  renameChat,
+  sendMessage,
+} from './chat.js';
 import { openSettings } from './settings.js';
 import { downloadChatTxt } from './exporttxt.js';
 import { buildPreviewHtml, downloadZip } from './livebuild.js';
@@ -14,13 +24,23 @@ const chatListEl = document.getElementById('chat-list');
 const chatSearchInput = document.getElementById('chat-search');
 const newChatBtn = document.getElementById('new-chat-btn');
 const settingsBtn = document.getElementById('settings-btn');
-const exportBtn = document.getElementById('export-btn');
-const githubBtn = document.getElementById('github-btn');
 const sidebarOpenBtn = document.getElementById('sidebar-open');
 const sidebarCloseBtn = document.getElementById('sidebar-close');
 
-const modelSelect = document.getElementById('model-select');
+const modelDropdown = document.getElementById('model-dropdown');
+const modelMenu = document.getElementById('model-menu');
+const modelValueEl = document.getElementById('model-value');
+
+const searchDropdown = document.getElementById('search-dropdown');
+const searchValueEl = document.getElementById('search-value');
+const thinkingDropdown = document.getElementById('thinking-dropdown');
+const thinkingValueEl = document.getElementById('thinking-value');
+const livebuildToggle = document.getElementById('livebuild-toggle');
+
+const chatMenuBtn = document.getElementById('chat-menu-btn');
+const chatMenuPopup = document.getElementById('chat-menu-popup');
 const chatTitleLabel = document.getElementById('chat-title-label');
+
 const messagesEl = document.getElementById('messages');
 const attachPreviewEl = document.getElementById('attach-preview');
 const attachBtn = document.getElementById('attach-btn');
@@ -28,7 +48,6 @@ const attachInput = document.getElementById('attach-input');
 const composerInput = document.getElementById('composer-input');
 const sendBtn = document.getElementById('send-btn');
 
-const livebuildToggle = document.getElementById('livebuild-toggle');
 const livepanelEl = document.getElementById('livepanel');
 const livepanelBody = document.getElementById('livepanel-body');
 const liveFilePillsEl = document.getElementById('live-file-pills');
@@ -42,11 +61,99 @@ let currentLiveFiles = [];
 let liveActiveTab = 'preview';
 let liveActiveFileIdx = 0;
 
-// ---------------- Markdown rendering ----------------
+const SEARCH_LABELS = { off: 'Без поиска', normal: 'Обычный поиск', deep: 'Глубокий поиск' };
+const THINKING_LABELS = { off: 'Обычный ответ', thinking: 'Thinking', thinkingPlus: 'Thinking+' };
+
+// ---------------- Boot ----------------
+injectIcons(document);
+
+// ---------------- Markdown ----------------
 function renderMarkdown(text) {
   const raw = window.marked ? window.marked.parse(text || '') : escapeHtml(text || '').replace(/\n/g, '<br>');
   return window.DOMPurify ? window.DOMPurify.sanitize(raw) : raw;
 }
+
+// ---------------- Dropdowns ----------------
+function setupDropdown(dropdownEl, onSelect) {
+  const trigger = dropdownEl.querySelector('.dropdown-trigger');
+  const menu = dropdownEl.querySelector('.dropdown-menu');
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.dropdown.is-open').forEach((d) => {
+      if (d !== dropdownEl) {
+        d.classList.remove('is-open');
+        d.querySelector('.dropdown-menu')?.classList.remove('is-open');
+      }
+    });
+    dropdownEl.classList.toggle('is-open');
+    menu.classList.toggle('is-open');
+  });
+  menu.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-value]');
+    if (!btn) return;
+    onSelect(btn.dataset.value, btn.textContent);
+    close();
+  });
+  function close() {
+    dropdownEl.classList.remove('is-open');
+    menu.classList.remove('is-open');
+  }
+  return { close };
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown.is-open').forEach((d) => {
+      d.classList.remove('is-open');
+      d.querySelector('.dropdown-menu')?.classList.remove('is-open');
+    });
+  }
+  if (!e.target.closest('.chat-menu')) {
+    chatMenuPopup?.classList.remove('is-open');
+  }
+});
+
+setupDropdown(searchDropdown, (value) => {
+  mode.search = value;
+  searchValueEl.textContent = SEARCH_LABELS[value];
+  searchDropdown.querySelector('.dropdown-trigger').classList.toggle('is-active-mode', value !== 'off');
+});
+
+setupDropdown(thinkingDropdown, (value) => {
+  mode.thinking = value;
+  thinkingValueEl.textContent = THINKING_LABELS[value];
+  thinkingDropdown.querySelector('.dropdown-trigger').classList.toggle('is-active-mode', value !== 'off');
+});
+
+// Model dropdown is built dynamically since the model list can grow when vision is enabled.
+function renderModelMenu() {
+  const models = listModels();
+  modelMenu.innerHTML = models
+    .map(
+      (m) => `
+      <button type="button" data-value="${m.id}"${m.id === currentChat.modelId ? ' class="is-selected"' : ''}>
+        <div class="model-item">
+          <span>${escapeHtml(m.label)}</span>
+          <span class="sub">${escapeHtml(m.tag)}${m.vision ? ' · vision' : ''}</span>
+        </div>
+      </button>`
+    )
+    .join('');
+  const active = models.find((m) => m.id === currentChat.modelId) || models[0];
+  modelValueEl.textContent = active.label;
+}
+setupDropdown(modelDropdown, (value) => {
+  currentChat.modelId = value;
+  saveChat(currentChat);
+  renderModelMenu();
+  updateAttachVisibility();
+});
+
+// ---------------- Live Build toggle ----------------
+livebuildToggle.addEventListener('click', () => {
+  mode.liveBuild = !mode.liveBuild;
+  livebuildToggle.classList.toggle('is-active', mode.liveBuild);
+});
 
 // ---------------- Sidebar ----------------
 function renderSidebar(filter = '') {
@@ -65,8 +172,8 @@ function renderSidebar(filter = '') {
       item.appendChild(span);
 
       const del = document.createElement('button');
-      del.className = 'chat-item__del';
-      del.textContent = '✕';
+      del.className = 'del';
+      del.innerHTML = iconSvg('trash', 14);
       del.title = 'Удалить чат';
       del.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -112,45 +219,42 @@ newChatBtn.addEventListener('click', () => {
 });
 chatSearchInput.addEventListener('input', () => renderSidebar(chatSearchInput.value));
 
-// ---------------- Model select ----------------
-function renderModelSelect() {
-  const models = getModels();
-  modelSelect.innerHTML = models
-    .map((m) => `<option value="${m.id}">${escapeHtml(m.label)}${m.vision ? ' 👁' : ''}</option>`)
-    .join('');
-  if (!models.find((m) => m.id === currentChat.modelId) && models.length) {
-    currentChat.modelId = models[0].id;
-    saveChat(currentChat);
-  }
-  if (currentChat.modelId) modelSelect.value = currentChat.modelId;
-  updateAttachButtonVisibility();
-}
-function updateAttachButtonVisibility() {
-  const model = getModelById(modelSelect.value);
-  attachBtn.style.display = model && model.vision ? 'inline-flex' : 'none';
-}
-modelSelect.addEventListener('change', () => {
-  currentChat.modelId = modelSelect.value;
-  saveChat(currentChat);
-  updateAttachButtonVisibility();
+// ---------------- Chat menu ----------------
+chatMenuBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  chatMenuPopup.classList.toggle('is-open');
 });
-
-// ---------------- Mode toggles ----------------
-function wireModeGroup(groupEl, dataKey, stateKey) {
-  const btns = [...groupEl.querySelectorAll('button')];
-  btns.forEach((btn) => {
-    btn.classList.toggle('is-active', btn.dataset[dataKey] === mode[stateKey]);
-    btn.addEventListener('click', () => {
-      mode[stateKey] = btn.dataset[dataKey];
-      btns.forEach((b) => b.classList.toggle('is-active', b === btn));
+chatMenuPopup.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  chatMenuPopup.classList.remove('is-open');
+  const act = btn.dataset.act;
+  if (act === 'export') {
+    downloadChatTxt(currentChat);
+    toast('Экспортирую чат в .txt', 'success');
+  } else if (act === 'rename') {
+    const title = await promptDialog({
+      title: 'Переименовать чат',
+      message: 'Новое название чата:',
+      value: currentChat.title,
     });
-  });
-}
-wireModeGroup(document.getElementById('search-mode-group'), 'searchMode', 'search');
-wireModeGroup(document.getElementById('thinking-mode-group'), 'thinkingMode', 'thinking');
-livebuildToggle.addEventListener('click', () => {
-  mode.liveBuild = !mode.liveBuild;
-  livebuildToggle.classList.toggle('is-active', mode.liveBuild);
+    if (title) {
+      renameChat(currentChat.id, title.trim() || currentChat.title);
+      currentChat = getActiveChat();
+      renderAll();
+    }
+  } else if (act === 'delete') {
+    const ok = await confirmDialog({
+      title: 'Удалить чат?',
+      message: `«${currentChat.title}» будет удалён без возможности восстановления.`,
+      danger: true,
+      okText: 'Удалить',
+    });
+    if (!ok) return;
+    deleteChat(currentChat.id);
+    currentChat = getActiveChat();
+    renderAll();
+  }
 });
 
 // ---------------- Messages rendering ----------------
@@ -158,10 +262,10 @@ function messageBubbleEl(msg) {
   const wrap = document.createElement('div');
   wrap.className = `msg msg--${msg.role}`;
 
-  const roleLabel = document.createElement('div');
-  roleLabel.className = 'msg__role';
-  roleLabel.textContent = msg.role === 'assistant' ? 'Deeps' : 'Вы';
-  wrap.appendChild(roleLabel);
+  const meta = document.createElement('div');
+  meta.className = 'msg__meta';
+  meta.textContent = msg.role === 'assistant' ? 'Deeps' : 'Вы';
+  wrap.appendChild(meta);
 
   if (msg.thoughtLog && msg.thoughtLog.length) {
     const details = document.createElement('details');
@@ -178,43 +282,79 @@ function messageBubbleEl(msg) {
     wrap.appendChild(details);
   }
 
-  const bubble = document.createElement('div');
-  bubble.className = 'msg__bubble';
-  bubble.innerHTML = renderMarkdown(msg.content || '');
-  wrap.appendChild(bubble);
+  const content = document.createElement('div');
+  content.className = 'msg__content';
+  content.innerHTML = renderMarkdown(msg.content || '');
+  wrap.appendChild(content);
 
   if (msg.images && msg.images.length) {
     msg.images.forEach((src) => {
       const img = document.createElement('img');
       img.className = 'attach';
       img.src = src;
-      bubble.appendChild(img);
+      content.appendChild(img);
     });
   }
 
   if (msg.files && msg.files.length) {
     const note = document.createElement('div');
-    note.style.marginTop = '8px';
+    note.style.marginTop = '10px';
     note.style.fontSize = '12.5px';
     note.style.color = 'var(--text-dim)';
-    note.textContent = `📦 Сгенерировано файлов: ${msg.files.length} — открой панель Live Build справа.`;
-    bubble.appendChild(note);
+    note.textContent = `Сгенерировано файлов: ${msg.files.length} — панель Live Build →`;
+    content.appendChild(note);
   }
 
   return wrap;
 }
 
+function welcomeScreen() {
+  const wrap = document.createElement('div');
+  wrap.className = 'welcome-screen';
+  wrap.innerHTML = `
+    <div class="brand-logo">D</div>
+    <h2>Привет, я Deeps</h2>
+    <p>DeepSeek с приятным интерфейсом: настраиваешь один провайдер, выбираешь модель, получаешь чат, поиск, режимы рассуждения и Live Build сайтов в zip.</p>
+    <div class="suggestion-row">
+      <button type="button" class="suggestion" data-suggest="Придумай план приложения для трекинга привычек и опиши экраны.">Спланируй приложение для трекинга привычек</button>
+      <button type="button" class="suggestion" data-suggest="Собери одностраничный сайт-портфолио дизайнера с тёмной темой.">Собрать сайт-портфолио (Live Build)</button>
+      <button type="button" class="suggestion" data-suggest="Сравни DeepSeek V4 Flash и Pro — когда какую использовать?">Flash vs Pro — когда какую?</button>
+      <button type="button" class="suggestion" data-suggest="Найди последние новости про DeepSeek в интернете.">Найди свежие новости про DeepSeek</button>
+    </div>`;
+  wrap.querySelectorAll('.suggestion').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      composerInput.value = btn.dataset.suggest;
+      composerInput.dispatchEvent(new Event('input'));
+      composerInput.focus();
+    });
+  });
+  return wrap;
+}
+
 function renderMessages() {
   messagesEl.innerHTML = '';
-  currentChat.messages.forEach((msg) => messagesEl.appendChild(messageBubbleEl(msg)));
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  if (!currentChat.messages.length) {
+    messagesEl.appendChild(welcomeScreen());
+  } else {
+    const inner = document.createElement('div');
+    inner.className = 'messages__inner';
+    currentChat.messages.forEach((m) => inner.appendChild(messageBubbleEl(m)));
+    messagesEl.appendChild(inner);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
   chatTitleLabel.textContent = currentChat.title || 'Новый чат';
+}
+
+function updateAttachVisibility() {
+  const model = getModelById(currentChat.modelId);
+  attachBtn.style.display = model.vision ? 'inline-flex' : 'none';
 }
 
 function renderAll() {
   renderSidebar(chatSearchInput.value);
   renderMessages();
-  renderModelSelect();
+  renderModelMenu();
+  updateAttachVisibility();
 }
 
 // ---------------- Attachments ----------------
@@ -270,15 +410,29 @@ async function handleSend() {
   pendingImages = [];
   renderAttachPreview();
 
-  messagesEl.appendChild(messageBubbleEl({ role: 'user', content: text, images }));
+  // Ensure messages container is in list-mode (kill welcome if present)
+  if (!currentChat.messages.length) {
+    messagesEl.innerHTML = '';
+    const inner = document.createElement('div');
+    inner.className = 'messages__inner';
+    messagesEl.appendChild(inner);
+  }
+  let inner = messagesEl.querySelector('.messages__inner');
+  if (!inner) {
+    inner = document.createElement('div');
+    inner.className = 'messages__inner';
+    messagesEl.appendChild(inner);
+  }
+
+  inner.appendChild(messageBubbleEl({ role: 'user', content: text, images }));
   const typingWrap = document.createElement('div');
   typingWrap.className = 'msg msg--assistant';
   typingWrap.innerHTML =
-    '<div class="msg__role">Deeps</div>' +
-    '<div class="msg__bubble" id="stream-bubble"><span class="typing-indicator"><span></span><span></span><span></span></span></div>';
-  messagesEl.appendChild(typingWrap);
+    '<div class="msg__meta">Deeps</div>' +
+    '<div class="msg__content" id="stream-content"><span class="typing-indicator"><span></span><span></span><span></span></span></div>';
+  inner.appendChild(typingWrap);
   messagesEl.scrollTop = messagesEl.scrollHeight;
-  const streamBubble = typingWrap.querySelector('#stream-bubble');
+  const streamBubble = typingWrap.querySelector('#stream-content');
 
   try {
     await sendMessage({
@@ -287,18 +441,19 @@ async function handleSend() {
       images,
       mode: { ...mode },
       onDelta: (full) => {
-        streamBubble.style.whiteSpace = 'pre-wrap';
-        streamBubble.textContent = full;
+        streamBubble.innerHTML = renderMarkdown(full);
         messagesEl.scrollTop = messagesEl.scrollHeight;
       },
       onThoughtProgress: (progress) => {
         const last = progress.log[progress.log.length - 1];
-        streamBubble.innerHTML = `<em>🧠 Думаю… шаг ${progress.log.length}${last && last.converged ? ' (готово)' : ''}</em>`;
+        streamBubble.innerHTML = `<em style="color:var(--text-dim)">Думаю… шаг ${progress.log.length}${
+          last && last.converged ? ' (готово)' : ''
+        }</em>`;
         messagesEl.scrollTop = messagesEl.scrollHeight;
       },
     });
   } catch (err) {
-    toast(err.message, 'error');
+    toast(err.message, 'error', 5000);
   } finally {
     sending = false;
     sendBtn.disabled = false;
@@ -310,10 +465,8 @@ async function handleSend() {
   }
 }
 
-// ---------------- Settings / export / github entry points ----------------
+// ---------------- Settings ----------------
 settingsBtn.addEventListener('click', () => openSettings({ onChange: renderAll }));
-githubBtn.addEventListener('click', () => openSettings({ tab: 'github', onChange: renderAll }));
-exportBtn.addEventListener('click', () => downloadChatTxt(currentChat));
 
 // ---------------- Live Build panel ----------------
 function openLivePanel(files) {
@@ -337,7 +490,7 @@ function renderLivePanel() {
       livepanelBody.appendChild(iframe);
     } else {
       livepanelBody.innerHTML =
-        '<div style="padding:16px;color:var(--text-dim);font-size:13px;">Не нашёл index.html для превью — смотри вкладку «Файлы».</div>';
+        '<div class="livepanel__empty">Не нашёл index.html для превью — смотри вкладку «Файлы».</div>';
     }
   } else {
     liveFilePillsEl.style.display = 'flex';
@@ -366,7 +519,7 @@ document.getElementById('livepanel-close').addEventListener('click', () => livep
 
 document.getElementById('live-download-zip').addEventListener('click', async () => {
   if (!currentLiveFiles.length) {
-    toast('Нет файлов для скачивания — сначала попроси Deeps собрать сайт во включённом режиме Live Build', 'error');
+    toast('Сначала попроси Deeps собрать сайт во включённом режиме Live Build', 'error');
     return;
   }
   try {
@@ -385,8 +538,8 @@ async function openGithubPushModal(files) {
   }
   const settings = Store.getSettings();
   if (!settings.githubToken) {
-    toast('Сначала добавь GitHub-токен в Настройках → GitHub', 'error');
-    openSettings({ tab: 'github', onChange: renderAll });
+    toast('Сначала добавь GitHub-токен в Настройках', 'error');
+    openSettings({ onChange: renderAll });
     return;
   }
 
@@ -394,30 +547,36 @@ async function openGithubPushModal(files) {
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
-      <h3>Запушить проект в GitHub</h3>
-      <div class="field">
-        <label>Существующий репозиторий</label>
-        <select class="input" id="gh-repo-select"><option value="">Загрузка…</option></select>
+      <div class="modal__header">
+        <h3>Запушить проект в GitHub</h3>
+        <button class="icon-btn" data-act="cancel" data-icon="close"></button>
       </div>
-      <div class="field">
-        <label>Или создать новый</label>
-        <input class="input" id="gh-new-repo" placeholder="название-нового-репозитория" />
+      <div class="modal__scroll">
+        <div class="field">
+          <label>Существующий репозиторий</label>
+          <select class="input" id="gh-repo-select"><option value="">Загрузка…</option></select>
+        </div>
+        <div class="field">
+          <label>Или создать новый</label>
+          <input class="input" id="gh-new-repo" placeholder="my-generated-site" />
+        </div>
+        <div class="field">
+          <label>Ветка</label>
+          <input class="input" id="gh-branch" value="main" />
+        </div>
+        <div class="field">
+          <label>Сообщение коммита</label>
+          <input class="input" id="gh-message" value="Deeps: сгенерированный проект" />
+        </div>
+        <div id="gh-progress" class="hint"></div>
       </div>
-      <div class="field">
-        <label>Ветка</label>
-        <input class="input" id="gh-branch" value="main" />
-      </div>
-      <div class="field">
-        <label>Сообщение коммита</label>
-        <input class="input" id="gh-message" value="Deeps: добавлен сгенерированный проект" />
-      </div>
-      <div id="gh-progress" class="meta"></div>
-      <div class="modal__actions">
-        <button type="button" class="btn" data-act="cancel">Отмена</button>
+      <div class="modal__footer">
+        <button type="button" class="btn btn--ghost" data-act="cancel">Отмена</button>
         <button type="button" class="btn btn--primary" data-act="push">Запушить</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  injectIcons(overlay);
   requestAnimationFrame(() => overlay.classList.add('modal-overlay--show'));
 
   const repoSelect = overlay.querySelector('#gh-repo-select');
@@ -434,9 +593,8 @@ async function openGithubPushModal(files) {
   }
 
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay || e.target.closest('[data-act="cancel"]')) overlay.remove();
   });
-  overlay.querySelector('[data-act="cancel"]').addEventListener('click', () => overlay.remove());
   overlay.querySelector('[data-act="push"]').addEventListener('click', async () => {
     const progressEl = overlay.querySelector('#gh-progress');
     const newRepoName = overlay.querySelector('#gh-new-repo').value.trim();
@@ -468,4 +626,6 @@ async function openGithubPushModal(files) {
 }
 
 // ---------------- Init ----------------
+searchValueEl.textContent = SEARCH_LABELS[mode.search];
+thinkingValueEl.textContent = THINKING_LABELS[mode.thinking];
 renderAll();
