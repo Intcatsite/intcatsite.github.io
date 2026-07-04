@@ -2,58 +2,107 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Deeps — AI чат</title>
-<meta name="description" content="Deeps — чат с DeepSeek и другими моделями через свой API-ключ: поиск, thinking-режимы, live build сайтов, GitHub." />
-<link rel="icon" href="assets/logo.png" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Deeps — AI чат на DeepSeek</title>
+<meta name="description" content="Deeps — AI-чат: подключаешь свой ключ OpenRouter или другого провайдера, получаешь DeepSeek Flash/Pro, поиск, thinking-режимы, генерацию сайтов." />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%237c9cff%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23b482ff%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ctext%20x%3D%2232%22%20y%3D%2244%22%20font-family%3D%22system-ui%2C%20sans-serif%22%20font-size%3D%2238%22%20font-weight%3D%22800%22%20fill%3D%22%23101223%22%20text-anchor%3D%22middle%22%3ED%3C%2Ftext%3E%3C%2Fsvg%3E" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
-<div id="app-shell">
+<div id="app">
 
   <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
   <aside id="sidebar">
-    <div class="sidebar__header">
-      <img src="assets/logo.png" alt="Deeps" />
-      <h1>Deeps</h1>
-      <button class="icon-btn sidebar__close" id="sidebar-close" title="Закрыть">✕</button>
+    <div class="sidebar__brand">
+      <div class="brand-logo">D</div>
+      <div class="brand-text">
+        <span class="brand-name">Deeps</span>
+        <span class="brand-sub">DeepSeek chat</span>
+      </div>
+      <button class="icon-btn sidebar__close" id="sidebar-close" data-icon="close" title="Закрыть"></button>
     </div>
-    <div class="sidebar__new">
-      <button class="btn btn--primary" id="new-chat-btn">+ Новый чат</button>
+
+    <div class="sidebar__section">
+      <button class="btn btn--primary btn--wide" id="new-chat-btn">
+        <span data-icon="plus" data-icon-size="16"></span>
+        <span>Новый чат</span>
+      </button>
     </div>
-    <div class="sidebar__search">
-      <input type="text" class="input" id="chat-search" placeholder="Поиск по чатам…" />
+
+    <div class="sidebar__section">
+      <div class="search-input">
+        <span data-icon="search" data-icon-size="14"></span>
+        <input type="text" id="chat-search" placeholder="Поиск по чатам..." />
+      </div>
     </div>
+
     <div id="chat-list"></div>
+
     <div class="sidebar__footer">
-      <button class="icon-btn" id="settings-btn" title="Настройки">⚙️</button>
-      <button class="icon-btn" id="export-btn" title="Экспорт чата в .txt">⬇️</button>
-      <button class="icon-btn" id="github-btn" title="GitHub">🐙</button>
+      <button class="icon-btn icon-btn--wide" id="settings-btn">
+        <span data-icon="settings" data-icon-size="16"></span>
+        <span>Настройки</span>
+      </button>
     </div>
   </aside>
 
   <main id="main">
     <header id="topbar">
-      <button class="icon-btn sidebar-toggle" id="sidebar-open" title="Чаты">☰</button>
-      <select id="model-select" class="input"></select>
+      <button class="icon-btn sidebar-toggle" id="sidebar-open" data-icon="menu" title="Чаты"></button>
 
-      <div class="mode-group" id="search-mode-group" title="Поиск в интернете">
-        <button class="btn btn--sm btn--toggle" data-search-mode="off">Без поиска</button>
-        <button class="btn btn--sm btn--toggle" data-search-mode="normal">🔎 Поиск</button>
-        <button class="btn btn--sm btn--toggle" data-search-mode="deep">🔬 Глубокий</button>
+      <div class="dropdown" id="model-dropdown">
+        <button class="dropdown-trigger dropdown-trigger--strong" type="button">
+          <span data-icon="layers" data-icon-size="15"></span>
+          <span class="dropdown-value" id="model-value">DeepSeek V4 Flash</span>
+          <span data-icon="chevronDown" data-icon-size="14"></span>
+        </button>
+        <div class="dropdown-menu" id="model-menu"></div>
       </div>
 
-      <div class="mode-group" id="thinking-mode-group" title="Режим рассуждения">
-        <button class="btn btn--sm btn--toggle" data-thinking-mode="off">Обычный</button>
-        <button class="btn btn--sm btn--toggle" data-thinking-mode="thinking">🧠 Thinking</button>
-        <button class="btn btn--sm btn--toggle" data-thinking-mode="thinkingPlus">🧠+ Thinking+</button>
+      <div class="dropdown" id="search-dropdown">
+        <button class="dropdown-trigger" type="button">
+          <span data-icon="search" data-icon-size="15"></span>
+          <span class="dropdown-value" id="search-value">Без поиска</span>
+          <span data-icon="chevronDown" data-icon-size="14"></span>
+        </button>
+        <div class="dropdown-menu">
+          <button type="button" data-value="off">Без поиска</button>
+          <button type="button" data-value="normal">Обычный поиск</button>
+          <button type="button" data-value="deep">Глубокий поиск</button>
+        </div>
       </div>
 
-      <button class="btn btn--sm btn--toggle" id="livebuild-toggle" title="Собрать сайт/проект и получить zip">🛠️ Live Build</button>
+      <div class="dropdown" id="thinking-dropdown">
+        <button class="dropdown-trigger" type="button">
+          <span data-icon="brain" data-icon-size="15"></span>
+          <span class="dropdown-value" id="thinking-value">Обычный ответ</span>
+          <span data-icon="chevronDown" data-icon-size="14"></span>
+        </button>
+        <div class="dropdown-menu">
+          <button type="button" data-value="off">Обычный ответ</button>
+          <button type="button" data-value="thinking">Thinking</button>
+          <button type="button" data-value="thinkingPlus">Thinking+</button>
+        </div>
+      </div>
 
-      <span class="chat-title" id="chat-title-label">Новый чат</span>
+      <button class="btn btn--sm btn--toggle" id="livebuild-toggle" title="Собрать сайт/приложение из чата">
+        <span data-icon="wrench" data-icon-size="14"></span>
+        <span>Live Build</span>
+      </button>
+
+      <span class="topbar__spacer"></span>
+
+      <div class="chat-menu" id="chat-menu-wrap">
+        <span class="chat-title-label" id="chat-title-label">Новый чат</span>
+        <button class="icon-btn" id="chat-menu-btn" data-icon="more" title="Действия"></button>
+        <div class="chat-menu__popup" id="chat-menu-popup">
+          <button type="button" data-act="rename"><span data-icon="edit" data-icon-size="14"></span>Переименовать</button>
+          <button type="button" data-act="export"><span data-icon="download" data-icon-size="14"></span>Экспорт в .txt</button>
+          <button type="button" data-act="delete" class="danger"><span data-icon="trash" data-icon-size="14"></span>Удалить чат</button>
+        </div>
+      </div>
     </header>
 
     <div id="messages"></div>
@@ -61,30 +110,42 @@
     <div id="attach-preview"></div>
 
     <div id="composer">
-      <button class="icon-btn" id="attach-btn" title="Прикрепить изображение (vision)">📎</button>
-      <input type="file" id="attach-input" accept="image/*" hidden />
-      <textarea id="composer-input" class="input" rows="1" placeholder="Напиши сообщение… (Shift+Enter — новая строка)"></textarea>
-      <button class="btn btn--primary" id="send-btn">Отправить</button>
+      <div class="composer__inner">
+        <button class="icon-btn" id="attach-btn" data-icon="paperclip" title="Прикрепить изображение (vision)"></button>
+        <input type="file" id="attach-input" accept="image/*" hidden />
+        <textarea id="composer-input" rows="1" placeholder="Напиши сообщение..."></textarea>
+        <button class="icon-btn icon-btn--send" id="send-btn" data-icon="send" title="Отправить"></button>
+      </div>
+      <div class="composer__hint">Enter — отправить · Shift+Enter — новая строка</div>
     </div>
   </main>
 
   <aside id="livepanel">
     <div class="livepanel__header">
+      <span data-icon="package" data-icon-size="16"></span>
       <strong>Live Build</strong>
       <span style="flex:1"></span>
-      <button class="icon-btn" id="livepanel-close" title="Закрыть">✕</button>
+      <button class="icon-btn" id="livepanel-close" data-icon="close" title="Закрыть"></button>
     </div>
     <div class="livepanel__tabs">
-      <button class="btn btn--sm btn--toggle is-active" data-live-tab="preview">Превью</button>
-      <button class="btn btn--sm btn--toggle" data-live-tab="files">Файлы</button>
+      <button class="tab-btn is-active" data-live-tab="preview">Превью</button>
+      <button class="tab-btn" data-live-tab="files">Файлы</button>
     </div>
     <div class="file-pill-row" id="live-file-pills" style="display:none"></div>
     <div class="livepanel__body" id="livepanel-body">
-      <div style="padding:16px;color:var(--text-dim);font-size:13px;">Здесь появится превью сгенерированного сайта, когда модель вернёт файлы проекта.</div>
+      <div class="livepanel__empty">
+        Здесь появится превью сгенерированного сайта. Включи Live Build в тулбаре и попроси Deeps собрать проект.
+      </div>
     </div>
     <div class="livepanel__actions">
-      <button class="btn btn--primary btn--sm" id="live-download-zip">⬇️ Скачать .zip</button>
-      <button class="btn btn--sm" id="live-push-github">🐙 Запушить в GitHub</button>
+      <button class="btn btn--primary btn--sm" id="live-download-zip">
+        <span data-icon="download" data-icon-size="14"></span>
+        <span>Скачать .zip</span>
+      </button>
+      <button class="btn btn--sm" id="live-push-github">
+        <span data-icon="github" data-icon-size="14"></span>
+        <span>Запушить в GitHub</span>
+      </button>
     </div>
   </aside>
 

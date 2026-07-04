@@ -1,5 +1,5 @@
 import { Store } from './storage.js';
-import { getModelById, getProviderForModel } from './models.js';
+import { getModelById, listModels } from './models.js';
 import { streamChatCompletion, chatCompletion } from './providers.js';
 import { normalSearch, deepSearch } from './search.js';
 import { runThinking } from './thinking.js';
@@ -7,12 +7,12 @@ import { LIVEBUILD_SYSTEM_SUFFIX, parseFiles, stripFileBlocks } from './livebuil
 
 export function createChat() {
   const chats = Store.getChats();
-  const models = Store.getModels();
+  const models = listModels();
   const chat = {
     id: Store.uid(),
     title: 'Новый чат',
     createdAt: Date.now(),
-    modelId: chats[0]?.modelId || models[0]?.id || null,
+    modelId: chats[0]?.modelId || models[0]?.id || 'deepseek/deepseek-v4-flash',
     messages: [],
   };
   chats.unshift(chat);
@@ -21,9 +21,7 @@ export function createChat() {
   return chat;
 }
 
-export function getAllChats() {
-  return Store.getChats();
-}
+export function getAllChats() { return Store.getChats(); }
 
 export function getActiveChat() {
   const chats = Store.getChats();
@@ -36,9 +34,7 @@ export function getActiveChat() {
   return chat;
 }
 
-export function setActiveChat(id) {
-  Store.setActiveChatId(id);
-}
+export function setActiveChat(id) { Store.setActiveChatId(id); }
 
 export function saveChat(chat) {
   const chats = Store.getChats();
@@ -51,18 +47,13 @@ export function saveChat(chat) {
 export function deleteChat(id) {
   const chats = Store.getChats().filter((c) => c.id !== id);
   Store.setChats(chats);
-  if (Store.getActiveChatId() === id) {
-    Store.setActiveChatId(chats[0]?.id || null);
-  }
+  if (Store.getActiveChatId() === id) Store.setActiveChatId(chats[0]?.id || null);
 }
 
 export function renameChat(id, title) {
   const chats = Store.getChats();
   const chat = chats.find((c) => c.id === id);
-  if (chat) {
-    chat.title = title;
-    Store.setChats(chats);
-  }
+  if (chat) { chat.title = title; Store.setChats(chats); }
 }
 
 function buildContextMessages(chat, settings) {
@@ -73,12 +64,10 @@ function buildContextMessages(chat, settings) {
 export async function sendMessage({ chat, text, images, mode, onDelta, onThoughtProgress }) {
   const settings = Store.getSettings();
   const model = getModelById(chat.modelId);
-  const provider = model && getProviderForModel(model);
-  if (!model) throw new Error('Выбери модель в списке сверху.');
-  if (!provider) throw new Error('У модели не найден провайдер.');
-  if (!provider.apiKey) {
-    throw new Error(`У провайдера «${provider.name}» не задан API-ключ. Открой Настройки → Провайдеры.`);
-  }
+  const provider = settings.provider;
+
+  if (!provider.baseUrl) throw new Error('Не задан Base URL провайдера. Открой Настройки.');
+  if (!provider.apiKey) throw new Error('Не задан API-ключ провайдера. Открой Настройки.');
 
   const userContent =
     images && images.length
@@ -87,9 +76,7 @@ export async function sendMessage({ chat, text, images, mode, onDelta, onThought
 
   const userMsg = { role: 'user', content: text, contentForApi: userContent, images: images || [] };
   chat.messages.push(userMsg);
-  if (chat.messages.length === 1) {
-    chat.title = text.slice(0, 42) || 'Новый чат';
-  }
+  if (chat.messages.length === 1) chat.title = text.slice(0, 42) || 'Новый чат';
 
   let systemPrompt = settings.systemPrompt;
   if (mode.liveBuild) systemPrompt += '\n' + LIVEBUILD_SYSTEM_SUFFIX;
@@ -102,7 +89,7 @@ export async function sendMessage({ chat, text, images, mode, onDelta, onThought
       searchContext = await deepSearch(settings, text, (prompt) =>
         chatCompletion({
           provider,
-          modelId: model.modelId,
+          modelId: model.id,
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
         })
       );
@@ -121,7 +108,7 @@ export async function sendMessage({ chat, text, images, mode, onDelta, onThought
       let full = '';
       const stream = streamChatCompletion({
         provider,
-        modelId: model.modelId,
+        modelId: model.id,
         messages: [...systemMessages, ...historyMessages, { role: 'user', content: userContent }],
       });
       for await (const chunk of stream) {
@@ -135,7 +122,7 @@ export async function sendMessage({ chat, text, images, mode, onDelta, onThought
       const complete = (promptText) =>
         chatCompletion({
           provider,
-          modelId: model.modelId,
+          modelId: model.id,
           messages: [...systemMessages, ...historyMessages, { role: 'user', content: promptText }],
         });
       const result = await runThinking({
@@ -158,7 +145,7 @@ export async function sendMessage({ chat, text, images, mode, onDelta, onThought
     const files = parseFiles(assistantMsg.content);
     if (files.length) {
       assistantMsg.files = files;
-      assistantMsg.content = stripFileBlocks(assistantMsg.content) || 'Готово — проект собран, смотри панель Live Build справа.';
+      assistantMsg.content = stripFileBlocks(assistantMsg.content) || 'Готово — проект собран, смотри панель Live Build.';
     }
   }
 
