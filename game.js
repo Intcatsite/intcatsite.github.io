@@ -81,33 +81,102 @@
 
   const UKRAINE_CENTER = { lat: 48.3794, lng: 31.1656 };
   const REGIONS = [
-    { name: "Брянская область", lat: 53.2521, lng: 34.3717, front: true },
-    { name: "Курская область", lat: 51.7373, lng: 36.1874, front: true },
-    { name: "Белгородская область", lat: 50.5977, lng: 36.5858, front: true },
-    { name: "Воронежская область", lat: 51.6720, lng: 39.1843, front: true },
-    { name: "Ростовская область", lat: 47.2357, lng: 39.7015, front: true },
-    { name: "Краснодарский край", lat: 45.0355, lng: 38.9753, front: true },
-    { name: "Калининградская область", lat: 54.7104, lng: 20.4522 },
+    // Центральный ФО
     { name: "Москва", lat: 55.7558, lng: 37.6173 },
+    { name: "Белгород", lat: 50.5977, lng: 36.5858, front: true },
+    { name: "Брянск", lat: 53.2521, lng: 34.3717, front: true },
+    { name: "Владимир", lat: 56.1366, lng: 40.3966 },
+    { name: "Воронеж", lat: 51.6720, lng: 39.1843, front: true },
+    { name: "Иваново", lat: 57.0000, lng: 40.9739 },
+    { name: "Калуга", lat: 54.5293, lng: 36.2754 },
+    { name: "Кострома", lat: 57.7665, lng: 40.9269 },
+    { name: "Курск", lat: 51.7373, lng: 36.1874, front: true },
+    { name: "Липецк", lat: 52.6031, lng: 39.5708 },
+    { name: "Орёл", lat: 52.9700, lng: 36.0693 },
+    { name: "Рязань", lat: 54.6269, lng: 39.6916 },
+    { name: "Смоленск", lat: 54.7818, lng: 32.0401 },
+    { name: "Тамбов", lat: 52.7212, lng: 41.4523 },
+    { name: "Тверь", lat: 56.8587, lng: 35.9176 },
+    { name: "Тула", lat: 54.1961, lng: 38.1739 },
+    { name: "Ярославль", lat: 57.6261, lng: 39.8845 },
+    // Северо-Западный ФО
     { name: "Санкт-Петербург", lat: 59.9311, lng: 30.3609 },
-    { name: "Волгоградская область", lat: 48.7080, lng: 44.5133 },
-    { name: "Самарская область", lat: 53.2001, lng: 50.1500 },
-    { name: "Татарстан (Казань)", lat: 55.8304, lng: 49.0661 },
-    { name: "Свердловская область", lat: 56.8389, lng: 60.6057 },
-    { name: "Новосибирская область", lat: 55.0084, lng: 82.9357 },
-    { name: "Красноярский край", lat: 56.0184, lng: 92.8672 },
-    { name: "Иркутская область", lat: 52.2869, lng: 104.3050 },
-    { name: "Приморский край", lat: 43.1198, lng: 131.8869 },
-    { name: "Хабаровский край", lat: 48.4827, lng: 135.0838 },
-    { name: "Камчатский край", lat: 53.0195, lng: 158.6486 },
-    { name: "Мурманская область", lat: 68.9585, lng: 33.0827 },
+    { name: "Петрозаводск", lat: 61.7849, lng: 34.3469 },
+    { name: "Сыктывкар", lat: 61.6688, lng: 50.8319 },
+    { name: "Архангельск", lat: 64.5401, lng: 40.5433 },
+    { name: "Вологда", lat: 59.2181, lng: 39.8886 },
+    { name: "Калининград", lat: 54.7104, lng: 20.4522 },
+    { name: "Мурманск", lat: 68.9585, lng: 33.0827 },
+    { name: "Великий Новгород", lat: 58.5215, lng: 31.2755 },
+    { name: "Псков", lat: 57.8194, lng: 28.3319 },
+    { name: "Нарьян-Мар", lat: 67.6387, lng: 53.0067 },
+    // Южный ФО
+    { name: "Ростов-на-Дону", lat: 47.2357, lng: 39.7015, front: true },
+    { name: "Краснодар", lat: 45.0355, lng: 38.9753, front: true },
+    { name: "Астрахань", lat: 46.3497, lng: 48.0408 },
+    { name: "Волгоград", lat: 48.7080, lng: 44.5133 },
+    { name: "Элиста", lat: 46.3084, lng: 44.2558 },
+    { name: "Майкоп", lat: 44.6098, lng: 40.1006 },
+    // Северо-Кавказский ФО
+    { name: "Владикавказ", lat: 43.0241, lng: 44.6819 },
+    { name: "Грозный", lat: 43.3178, lng: 45.6949 },
+    { name: "Махачкала", lat: 42.9849, lng: 47.5047 },
+    { name: "Нальчик", lat: 43.4849, lng: 43.6068 },
+    { name: "Черкесск", lat: 44.2269, lng: 42.0474 },
+    { name: "Магас", lat: 43.1660, lng: 44.8100 },
+    { name: "Ставрополь", lat: 45.0428, lng: 41.9734 },
+    // Приволжский ФО
+    { name: "Казань", lat: 55.8304, lng: 49.0661 },
+    { name: "Уфа", lat: 54.7388, lng: 55.9721 },
+    { name: "Самара", lat: 53.2001, lng: 50.1500 },
+    { name: "Нижний Новгород", lat: 56.2965, lng: 43.9361 },
+    { name: "Саратов", lat: 51.5924, lng: 46.0348 },
+    { name: "Пермь", lat: 58.0105, lng: 56.2502 },
+    { name: "Оренбург", lat: 51.7727, lng: 55.0988 },
+    { name: "Пенза", lat: 53.2007, lng: 45.0046 },
+    { name: "Киров", lat: 58.6035, lng: 49.6679 },
+    { name: "Ижевск", lat: 56.8527, lng: 53.2115 },
+    { name: "Саранск", lat: 54.1808, lng: 45.1839 },
+    { name: "Чебоксары", lat: 56.1466, lng: 47.2519 },
+    { name: "Ульяновск", lat: 54.3141, lng: 48.4033 },
+    { name: "Йошкар-Ола", lat: 56.6344, lng: 47.8999 },
+    // Уральский ФО
+    { name: "Екатеринбург", lat: 56.8389, lng: 60.6057 },
+    { name: "Челябинск", lat: 55.1644, lng: 61.4368 },
+    { name: "Тюмень", lat: 57.1522, lng: 65.5272 },
+    { name: "Курган", lat: 55.4500, lng: 65.3333 },
+    { name: "Ханты-Мансийск", lat: 61.0042, lng: 69.0019 },
+    { name: "Салехард", lat: 66.5333, lng: 66.6333 },
+    // Сибирский ФО
+    { name: "Новосибирск", lat: 55.0084, lng: 82.9357 },
+    { name: "Омск", lat: 54.9885, lng: 73.3242 },
+    { name: "Красноярск", lat: 56.0184, lng: 92.8672 },
+    { name: "Иркутск", lat: 52.2869, lng: 104.3050 },
+    { name: "Барнаул", lat: 53.3548, lng: 83.7698 },
+    { name: "Кемерово", lat: 55.3547, lng: 86.0873 },
+    { name: "Томск", lat: 56.4977, lng: 84.9744 },
+    { name: "Абакан", lat: 53.7224, lng: 91.4441 },
+    { name: "Кызыл", lat: 51.7191, lng: 94.4378 },
+    { name: "Горно-Алтайск", lat: 51.9581, lng: 85.9603 },
+    { name: "Улан-Удэ", lat: 51.8335, lng: 107.5843 },
+    { name: "Чита", lat: 52.0340, lng: 113.4994 },
+    // Дальневосточный ФО
+    { name: "Владивосток", lat: 43.1198, lng: 131.8869 },
+    { name: "Хабаровск", lat: 48.4827, lng: 135.0838 },
+    { name: "Якутск", lat: 62.0355, lng: 129.6755 },
+    { name: "Благовещенск", lat: 50.2907, lng: 127.5272 },
+    { name: "Южно-Сахалинск", lat: 46.9591, lng: 142.7381 },
+    { name: "Петропавловск-Камчатский", lat: 53.0195, lng: 158.6486 },
+    { name: "Магадан", lat: 59.5638, lng: 150.8027 },
+    { name: "Биробиджан", lat: 48.7942, lng: 132.9228 },
+    { name: "Анадырь", lat: 64.7337, lng: 177.5119 },
   ];
 
   const leafletMap = L.map("leafletMap", {
     zoomControl: true, attributionControl: true,
-    minZoom: 3, maxZoom: 13,
+    minZoom: 3, maxZoom: 15,
   }).setView([61, 70], 3);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
     attribution: "© OpenStreetMap contributors © CARTO",
     subdomains: "abcd",
     maxZoom: 19,
@@ -138,31 +207,42 @@
     return Math.atan2(y, x); // radians, 0 = north, clockwise
   }
 
+  const GAMEPLAY_ZOOM = 10;
+
   function confirmRegion(region) {
     if (!awaitingRegionPick) return;
     pickedRegion = region;
     leafletMap.closePopup();
     for (const m of regionMarkers) leafletMap.removeLayer(m);
-    leafletMap.flyTo([region.lat, region.lng], 10, { duration: 1.2 });
+    leafletMap.flyTo([region.lat, region.lng], GAMEPLAY_ZOOM, { duration: 1.2 });
     document.getElementById("regionHint").classList.remove("show");
     leafletMap.once("moveend", () => {
-      leafletMap.dragging.disable();
-      leafletMap.scrollWheelZoom.disable();
-      leafletMap.doubleClickZoom.disable();
-      leafletMap.touchZoom.disable();
-      leafletMap.boxZoom.disable();
-      leafletMap.keyboard.disable();
       awaitingRegionPick = false;
       beginMatch(region);
     });
   }
 
+  // Map stays fully interactive (pan + zoom) during play; the canvas overlay is
+  // re-projected against the map's current view every frame (see currentTransform/render).
   function beginMatch(region) {
     resetGame();
     state.approachBearing = bearingTo(region, UKRAINE_CENTER);
-    canvas.classList.add("gameplay-active");
+    state.lockedCenter = { lat: region.lat, lng: region.lng };
+    state.lockedZoom = GAMEPLAY_ZOOM;
     started = true;
     paused = false;
+  }
+
+  function currentTransform() {
+    if (!state || !state.lockedCenter) return { scale: 1, cx: W / 2, cy: H / 2 };
+    const scale = Math.pow(2, leafletMap.getZoom() - state.lockedZoom);
+    const pt = leafletMap.latLngToContainerPoint([state.lockedCenter.lat, state.lockedCenter.lng]);
+    return { scale, cx: pt.x, cy: pt.y };
+  }
+
+  function toGameCoords(sx, sy) {
+    const t = currentTransform();
+    return { x: W / 2 + (sx - t.cx) / t.scale, y: H / 2 + (sy - t.cy) / t.scale };
   }
 
   function drawCompass() {
@@ -187,15 +267,14 @@
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.fillRect(-1.5, -8, 3, 20);
     ctx.restore();
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.font = "bold 10px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Украина", cx, cy + 48);
-  }
-
-  function drawMap() {
-    ctx.clearRect(0, 0, W, H);
-    if (started) drawCompass();
+    const label = "Украина";
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillRect(cx - tw / 2 - 6, cy + 39, tw + 12, 16);
+    ctx.fillStyle = "#1b2430";
+    ctx.fillText(label, cx, cy + 51);
   }
 
   // ---------- state ----------
@@ -919,7 +998,15 @@
   }
 
   function render() {
-    drawMap();
+    ctx.clearRect(0, 0, W, H);
+    if (!started) return;
+
+    const t = currentTransform();
+    ctx.save();
+    ctx.translate(t.cx, t.cy);
+    ctx.scale(t.scale, t.scale);
+    ctx.translate(-W / 2, -H / 2);
+
     drawPvos();
     drawNpzs();
     drawAzsList();
@@ -931,6 +1018,9 @@
     drawExplosions();
     drawPopups();
     drawPlacementPreview();
+
+    ctx.restore();
+    drawCompass();
   }
 
   function loop(ts) {
@@ -946,19 +1036,21 @@
   }
 
   // ---------- input ----------
+  // The canvas is a non-interactive overlay (pointer-events:none) so the map
+  // underneath stays fully pannable/zoomable; building placement hooks into
+  // Leaflet's own mouse events instead, converting through the world transform.
 
-  function canvasPos(evt) {
+  function mapEventToGame(e) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = W / rect.width;
-    const scaleY = H / rect.height;
-    return { x: (evt.clientX - rect.left) * scaleX, y: (evt.clientY - rect.top) * scaleY };
+    const scaleX = W / rect.width, scaleY = H / rect.height;
+    return toGameCoords(e.containerPoint.x * scaleX, e.containerPoint.y * scaleY);
   }
 
-  canvas.addEventListener("pointermove", (e) => { mouse = canvasPos(e); });
-  canvas.addEventListener("pointerleave", () => { mouse = { x: -9999, y: -9999 }; });
-  canvas.addEventListener("pointerdown", (e) => {
+  leafletMap.on("mousemove", (e) => { if (started) mouse = mapEventToGame(e); });
+  leafletMap.on("mouseout", () => { mouse = { x: -9999, y: -9999 }; });
+  leafletMap.on("click", (e) => {
     if (!started || paused || state.gameOver || !selectedMode) return;
-    const pos = canvasPos(e);
+    const pos = mapEventToGame(e);
     placeBuilding(selectedMode, pos.x, pos.y);
   });
 
