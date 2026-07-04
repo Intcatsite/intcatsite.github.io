@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Небесный рубеж — оборона заводов</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰</text></svg>">
+<style>
+  :root {
+    --bg: #0c1016;
+    --panel: #141b24;
+    --panel-border: #263041;
+    --accent: #3ea6ff;
+    --money: #ffd54a;
+    --danger: #ff5f5f;
+    --good: #4ade80;
+    --text: #dbe4ee;
+    --muted: #7c8aa0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    overflow: hidden;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+    flex-wrap: wrap;
+    z-index: 5;
+  }
+  header h1 {
+    font-size: 15px;
+    margin: 0;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .stat .label { color: var(--muted); }
+  .stat.money .value { color: var(--money); font-weight: 700; }
+  .stat.wave .value { color: var(--accent); font-weight: 700; }
+  .stat.factories .value { color: var(--good); font-weight: 700; }
+  .spacer { flex: 1; }
+  .build-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  button.build-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: #1b2330;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    min-width: 82px;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  button.build-btn .name { font-weight: 600; font-size: 12px; }
+  button.build-btn .cost { color: var(--money); font-size: 11px; }
+  button.build-btn:hover { background: #24314455; border-color: var(--accent); }
+  button.build-btn.selected { background: #1e3a5f; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  button.build-btn:disabled { opacity: .4; cursor: not-allowed; }
+  button.plain-btn {
+    background: #1b2330;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button.plain-btn:hover { border-color: var(--accent); }
+
+  #wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #05070b;
+  }
+  canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    cursor: crosshair;
+  }
+  #banner {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translate(-50%, -12px);
+    background: rgba(20, 27, 36, .92);
+    border: 1px solid var(--panel-border);
+    padding: 8px 22px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity .3s, transform .3s;
+    pointer-events: none;
+    z-index: 4;
+    white-space: nowrap;
+  }
+  #banner.show { opacity: 1; transform: translate(-50%, 0); }
+
+  #hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(20,27,36,.85);
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    pointer-events: none;
+    max-width: 90%;
+    text-align: center;
+  }
+
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 7, 11, .86);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    z-index: 10;
+    text-align: center;
+    padding: 20px;
+  }
+  #overlay.show { display: flex; }
+  #overlay h2 { margin: 0; font-size: 26px; color: var(--danger); }
+  #overlay p { margin: 0; color: var(--muted); max-width: 420px; }
+  #overlay .score { font-size: 16px; color: var(--text); }
+
+  #introOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5,7,11,.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 11;
+    padding: 20px;
+  }
+  #introOverlay .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 26px 28px;
+    max-width: 520px;
+    text-align: left;
+  }
+  #introOverlay h2 { margin-top: 0; color: var(--accent); font-size: 22px; }
+  #introOverlay ul { padding-left: 20px; line-height: 1.7; font-size: 14px; }
+  #introOverlay ul li b { color: var(--text); }
+  #introOverlay .factory { color: var(--good); }
+  #introOverlay .pvo { color: #ff9d4a; }
+  #introOverlay .interceptor { color: var(--accent); }
+  #introOverlay .drone { color: var(--danger); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🛰 Небесный рубеж</h1>
+    <div class="stat money"><span class="label">💰</span><span class="value" id="moneyVal">0</span></div>
+    <div class="stat wave"><span class="label">Волна</span><span class="value" id="waveVal">1</span></div>
+    <div class="stat factories"><span class="label">Заводы</span><span class="value" id="factoriesVal">0</span></div>
+    <div class="spacer"></div>
+    <div class="build-bar">
+      <button class="build-btn" id="btnFactory" data-mode="factory">
+        <span class="name">🏭 Завод</span><span class="cost">150</span>
+      </button>
+      <button class="build-btn" id="btnPvo" data-mode="pvo">
+        <span class="name">📡 ПВО</span><span class="cost">250</span>
+      </button>
+      <button class="build-btn" id="btnInterceptor" data-mode="interceptor">
+        <span class="name">✈ Истребитель</span><span class="cost">350</span>
+      </button>
+      <button class="plain-btn" id="btnPause">⏸ Пауза</button>
+      <button class="plain-btn" id="btnRestart">↺ Заново</button>
+    </div>
+  </header>
+  <div id="wrap">
+    <canvas id="game" width="1100" height="680"></canvas>
+    <div id="banner"></div>
+    <div id="hint">Выберите постройку сверху и кликните по карте России, чтобы разместить</div>
+    <div id="overlay">
+      <h2>Все заводы уничтожены</h2>
+      <p class="score" id="finalScore"></p>
+      <button class="plain-btn" id="btnRestart2">↺ Начать заново</button>
+    </div>
+    <div id="introOverlay">
+      <div class="card">
+        <h2>🛰 Небесный рубеж</h2>
+        <ul>
+          <li><b class="factory">🏭 Завод</b> — приносит доход каждую секунду. Это ваша цель, которую защищают враги.</li>
+          <li><b class="drone">🔺 Дрон</b> — летит со стороны Украины к случайному заводу. Долетит — завод будет уничтожен.</li>
+          <li><b class="pvo">📡 ПВО</b> — стационарная точка. Бьёт по всем дронам в своём круге поражения.</li>
+          <li><b class="interceptor">✈ Истребитель</b> — летает и сам преследует дроны в радиусе обнаружения, догоняет и сбивает.</li>
+          <li>Зарабатывайте на заводах и стройте оборону — волны дронов со временем усиливаются.</li>
+        </ul>
+        <button class="plain-btn" id="btnStart" style="width:100%;font-size:15px;padding:12px;">Начать игру</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
