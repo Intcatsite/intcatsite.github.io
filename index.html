@@ -194,6 +194,28 @@
   #introOverlay .pvo { color: #ff9d4a; }
   #introOverlay .interceptor { color: var(--accent); }
   #introOverlay .drone { color: var(--danger); }
+
+  .diff-row {
+    display: flex;
+    gap: 8px;
+    margin: 14px 0 18px;
+  }
+  button.diff-btn {
+    flex: 1;
+    background: #1b2330;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: background .15s, border-color .15s;
+  }
+  button.diff-btn .dname { display: block; font-weight: 700; font-size: 14px; }
+  button.diff-btn .ddesc { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  button.diff-btn:hover { border-color: var(--accent); }
+  button.diff-btn.selected { background: #1e3a5f; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  button.diff-btn.selected .ddesc { color: var(--text); }
 </style>
 </head>
 <body>
@@ -229,7 +251,7 @@
     </div>
   </header>
   <div id="wrap">
-    <canvas id="game" width="1100" height="680"></canvas>
+    <canvas id="game" width="1350" height="700"></canvas>
     <div id="banner"></div>
     <div id="hint">Выберите постройку сверху и кликните по карте России, чтобы разместить</div>
     <div id="overlay">
@@ -247,7 +269,19 @@
           <li><b class="drone">🔺 Дрон FP-1</b> — летит со стороны Украины, в первую очередь на НПЗ и АЗС. Долетел — здание уничтожено.</li>
           <li><b class="pvo">📡 ПВО</b> и <b class="interceptor">✈ Истребитель</b> — сбивают дроны, но сами жгут топливо с ближайшей АЗС. Кончилось топливо — не стреляют и не летают.</li>
           <li>Порвётся любое звено цепочки НПЗ→АЗС→грузовики — экономика посыплется. Стройте с запасом.</li>
+          <li>За каждый сбитый дрон — <b style="color:var(--money)">+5 монет</b>, кем бы он ни был сбит.</li>
         </ul>
+        <div class="diff-row" id="diffRow">
+          <button class="diff-btn" id="diffEasy" data-diff="easy">
+            <span class="dname">Легко</span><span class="ddesc">Больше денег, дроны слабее</span>
+          </button>
+          <button class="diff-btn selected" id="diffNormal" data-diff="normal">
+            <span class="dname">Нормально</span><span class="ddesc">Сбалансированная игра</span>
+          </button>
+          <button class="diff-btn" id="diffHard" data-diff="hard">
+            <span class="dname">Сложно</span><span class="ddesc">Меньше денег, дроны злее</span>
+          </button>
+        </div>
         <button class="plain-btn" id="btnStart" style="width:100%;font-size:15px;padding:12px;">Начать игру</button>
       </div>
     </div>

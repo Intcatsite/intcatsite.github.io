@@ -6,14 +6,13 @@
   const W = canvas.width;
   const H = canvas.height;
 
-  const BORDER_X = 190; // right edge of the Ukraine strip / left edge of placeable Russia zone
+  const BORDER_X = 195; // right edge of the Ukraine strip / left edge of placeable Russia zone
   const TOP_MARGIN = 30;
   const BOTTOM_MARGIN = 30;
   const MIN_BUILD_DIST = 50;
 
   const COSTS = { factory: 150, npz: 550, azs: 220, shop: 180, pvo: 250, interceptor: 350 };
-  const BOUNTY_PVO = 15;
-  const BOUNTY_INTERCEPTOR = 20;
+  const KILL_BOUNTY = 5;
   const GOODS_BOUNTY = 45;
   const FACTORY_PASSIVE = 2;
   const FACTORY_TRUCK_INTERVAL = 5;
@@ -34,6 +33,13 @@
   const INTERCEPTOR_FUEL_CAP = 80;
   const RESUPPLY_RATE = 20;
 
+  const DIFFICULTIES = {
+    easy: { startMoney: 800, waveInterval: 30, hpBase: 45, hpPerWave: 5, speedBase: 60, speedPerWave: 3, speedCap: 140, spawnBase: 3.6, spawnPerWave: 0.12, spawnMin: 1.2 },
+    normal: { startMoney: 600, waveInterval: 25, hpBase: 55, hpPerWave: 7, speedBase: 70, speedPerWave: 4, speedCap: 170, spawnBase: 3.2, spawnPerWave: 0.15, spawnMin: 0.9 },
+    hard: { startMoney: 450, waveInterval: 20, hpBase: 65, hpPerWave: 9, speedBase: 80, speedPerWave: 5, speedCap: 200, spawnBase: 2.6, spawnPerWave: 0.18, spawnMin: 0.6 },
+  };
+  let selectedDifficulty = "normal";
+
   const moneyEl = document.getElementById("moneyVal");
   const fuelEl = document.getElementById("fuelVal");
   const waveEl = document.getElementById("waveVal");
@@ -53,6 +59,11 @@
   const btnRestart = document.getElementById("btnRestart");
   const btnRestart2 = document.getElementById("btnRestart2");
   const btnStart = document.getElementById("btnStart");
+  const diffButtons = {
+    easy: document.getElementById("diffEasy"),
+    normal: document.getElementById("diffNormal"),
+    hard: document.getElementById("diffHard"),
+  };
 
   const buildButtons = {
     factory: btnFactory, npz: btnNpz, azs: btnAzs, shop: btnShop,
@@ -67,141 +78,24 @@
   let lastTime = 0;
   let bannerTimer = 0;
 
-  // ---------- map generation (silhouette + region mosaic), computed once ----------
+  // ---------- map: real Russia SVG loaded as an image ----------
 
-  const MAIN_LAND = [
-    [230, 40], [300, 15], [380, 35], [470, 20], [600, 40], [750, 60], [880, 50],
-    [980, 70], [1060, 110], [1095, 160], [1080, 210], [1095, 230], [1040, 260],
-    [1000, 300], [1030, 340], [1055, 420], [1015, 460], [970, 430], [940, 480],
-    [960, 540], [900, 590], [830, 630], [740, 660], [650, 675], [560, 660],
-    [480, 640], [430, 610], [380, 560], [340, 520], [300, 540], [270, 590],
-    [230, 610], [205, 560], [195, 480], [190, 400], [190, 250], [200, 150],
+  const MAP_SCALE = (W - BORDER_X) / 1650; // russia-map.svg viewBox is 1650x1000
+  const mapImg = new Image();
+  let mapReady = false;
+  mapImg.onload = () => { mapReady = true; };
+  mapImg.src = "russia-map.svg";
+
+  const FRONT_LABELS = [
+    { name: "Брянская обл.", x: 92, y: 573 },
+    { name: "Курская обл.", x: 100, y: 618 },
+    { name: "Белгородская обл.", x: 95, y: 652 },
+    { name: "Воронежская обл.", x: 135, y: 665 },
+    { name: "Ростовская обл.", x: 95, y: 745 },
+    { name: "Краснодарский край", x: 35, y: 765 },
+    { name: "Калининградская обл.", x: 25, y: 417 },
+    { name: "Сахалин", x: 1500, y: 660 },
   ];
-  const CRIMEA = [[192, 560], [175, 575], [180, 595], [198, 600], [205, 580]];
-  const SAKHALIN = [[1000, 555], [1015, 550], [1025, 580], [1020, 620], [1005, 635], [995, 600]];
-  const KALININGRAD = [[145, 70], [175, 60], [185, 85], [165, 100], [140, 90]];
-
-  const REGIONS = [
-    { name: "Брянская обл.", x: 230, y: 130, front: true },
-    { name: "Курская обл.", x: 215, y: 220, front: true },
-    { name: "Белгородская обл.", x: 232, y: 300, front: true },
-    { name: "Воронежская обл.", x: 282, y: 355, front: true },
-    { name: "Ростовская обл.", x: 250, y: 480, front: true },
-    { name: "Краснодарский край", x: 225, y: 570, front: true },
-    { name: "Крым", x: 188, y: 585, front: true },
-    { name: "Москва", x: 330, y: 200 },
-    { name: "Смоленская обл.", x: 250, y: 160 },
-    { name: "Санкт-Петербург", x: 330, y: 60 },
-    { name: "Тверская обл.", x: 300, y: 140 },
-    { name: "Нижегородская обл.", x: 420, y: 220 },
-    { name: "Волгоградская обл.", x: 330, y: 460 },
-    { name: "Саратовская обл.", x: 390, y: 400 },
-    { name: "Самарская обл.", x: 440, y: 350 },
-    { name: "Татарстан", x: 460, y: 280 },
-    { name: "Пермский край", x: 500, y: 180 },
-    { name: "Кировская обл.", x: 450, y: 150 },
-    { name: "Свердловская обл.", x: 560, y: 220 },
-    { name: "Челябинская обл.", x: 560, y: 300 },
-    { name: "Башкортостан", x: 490, y: 320 },
-    { name: "Оренбургская обл.", x: 460, y: 420 },
-    { name: "Тюменская обл.", x: 620, y: 160 },
-    { name: "Омская обл.", x: 650, y: 300 },
-    { name: "Новосибирская обл.", x: 700, y: 330 },
-    { name: "Томская обл.", x: 700, y: 240 },
-    { name: "Кемеровская обл.", x: 740, y: 300 },
-    { name: "Алтайский край", x: 700, y: 400 },
-    { name: "Красноярский край", x: 800, y: 200 },
-    { name: "Иркутская обл.", x: 850, y: 340 },
-    { name: "Бурятия", x: 880, y: 400 },
-    { name: "Забайкальский край", x: 930, y: 380 },
-    { name: "Якутия", x: 900, y: 220 },
-    { name: "Амурская обл.", x: 960, y: 420 },
-    { name: "Хабаровский край", x: 1000, y: 350 },
-    { name: "Приморский край", x: 1010, y: 460 },
-    { name: "Магаданская обл.", x: 1020, y: 250 },
-    { name: "Камчатский край", x: 1040, y: 380 },
-    { name: "Чукотка", x: 1060, y: 150 },
-    { name: "Сахалин", x: 1010, y: 590 },
-    { name: "Мурманская обл.", x: 280, y: 40 },
-    { name: "Архангельская обл.", x: 380, y: 90 },
-    { name: "Коми", x: 480, y: 90 },
-    { name: "ЯНАО", x: 620, y: 70 },
-    { name: "Калининградская обл.", x: 163, y: 82 },
-  ];
-
-  const CELL_PALETTE = ["#1c2b1f", "#213422", "#243a26", "#1a2e1d", "#2b3d24", "#203524", "#263a28", "#1e3220"];
-
-  function polyToPath2D(points) {
-    const p = new Path2D();
-    p.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) p.lineTo(points[i][0], points[i][1]);
-    p.closePath();
-    return p;
-  }
-
-  let landPath = null;
-  let cellCanvas = null;
-  let visibleLabels = [];
-
-  function buildMap() {
-    landPath = new Path2D();
-    landPath.addPath(polyToPath2D(MAIN_LAND));
-    landPath.addPath(polyToPath2D(CRIMEA));
-    landPath.addPath(polyToPath2D(SAKHALIN));
-    landPath.addPath(polyToPath2D(KALININGRAD));
-
-    const DIV = 3;
-    const lw = Math.ceil(W / DIV);
-    const lh = Math.ceil(H / DIV);
-    cellCanvas = document.createElement("canvas");
-    cellCanvas.width = lw;
-    cellCanvas.height = lh;
-    const cctx = cellCanvas.getContext("2d");
-    const img = cctx.createImageData(lw, lh);
-
-    const nearestIdx = new Int16Array(lw * lh);
-    const cellCount = new Int32Array(REGIONS.length);
-
-    for (let ly = 0; ly < lh; ly++) {
-      for (let lx = 0; lx < lw; lx++) {
-        const x = lx * DIV + DIV / 2;
-        const y = ly * DIV + DIV / 2;
-        let best = -1, bestDist = Infinity;
-        for (let i = 0; i < REGIONS.length; i++) {
-          const dx = REGIONS[i].x - x, dy = REGIONS[i].y - y;
-          const d = dx * dx + dy * dy;
-          if (d < bestDist) { bestDist = d; best = i; }
-        }
-        nearestIdx[ly * lw + lx] = best;
-        cellCount[best]++;
-      }
-    }
-
-    for (let ly = 0; ly < lh; ly++) {
-      for (let lx = 0; lx < lw; lx++) {
-        const idx = nearestIdx[ly * lw + lx];
-        const leftIdx = lx > 0 ? nearestIdx[ly * lw + lx - 1] : idx;
-        const topIdx = ly > 0 ? nearestIdx[(ly - 1) * lw + lx] : idx;
-        const isBorder = idx !== leftIdx || idx !== topIdx;
-        let hex;
-        if (isBorder) {
-          hex = "#0a120b";
-        } else {
-          const paletteI = (idx * 7 + 3) % CELL_PALETTE.length;
-          hex = CELL_PALETTE[paletteI];
-        }
-        const r = parseInt(hex.substring(1, 3), 16);
-        const g = parseInt(hex.substring(3, 5), 16);
-        const b = parseInt(hex.substring(5, 7), 16);
-        const p = (ly * lw + lx) * 4;
-        img.data[p] = r; img.data[p + 1] = g; img.data[p + 2] = b; img.data[p + 3] = 255;
-      }
-    }
-    cctx.putImageData(img, 0, 0);
-
-    const totalCells = lw * lh;
-    visibleLabels = REGIONS.filter((r, i) => r.front || cellCount[i] / totalCells > 0.0016);
-  }
 
   function drawMap() {
     ctx.clearRect(0, 0, W, H);
@@ -233,19 +127,17 @@
       ctx.stroke();
     }
 
-    // Russia backdrop fill (in case silhouette doesn't cover full canvas edge to edge)
     ctx.fillStyle = "#0d140f";
     ctx.fillRect(BORDER_X, 0, W - BORDER_X, H);
 
-    ctx.save();
-    ctx.clip(landPath);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(cellCanvas, 0, 0, W, H);
-    ctx.restore();
-
-    ctx.strokeStyle = "rgba(220,235,220,0.5)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke(landPath);
+    if (mapReady) {
+      ctx.drawImage(mapImg, BORDER_X, 0, W - BORDER_X, H);
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Загрузка карты…", BORDER_X + (W - BORDER_X) / 2, H / 2);
+    }
 
     ctx.strokeStyle = "rgba(255,255,255,0.22)";
     ctx.setLineDash([8, 6]);
@@ -254,10 +146,10 @@
     ctx.setLineDash([]);
 
     ctx.textAlign = "center";
-    for (const r of visibleLabels) {
-      ctx.font = r.front ? "bold 12px sans-serif" : "10px sans-serif";
-      ctx.fillStyle = r.front ? "rgba(255,210,160,0.95)" : "rgba(220,230,220,0.5)";
-      ctx.fillText(r.name, r.x, r.y);
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillStyle = "rgba(255,210,160,0.95)";
+    for (const r of FRONT_LABELS) {
+      ctx.fillText(r.name, BORDER_X + r.x * MAP_SCALE, r.y * MAP_SCALE);
     }
 
     ctx.font = "bold 26px sans-serif";
@@ -269,18 +161,20 @@
   // ---------- state ----------
 
   function freshState() {
+    const diff = DIFFICULTIES[selectedDifficulty];
     return {
-      money: 600,
-      totalEarned: 600,
+      diff,
+      money: diff.startMoney,
+      totalEarned: diff.startMoney,
       wave: 1,
-      waveTimer: 25,
+      waveTimer: diff.waveInterval,
       spawnTimer: 2,
       hadEconomy: false,
       gameOver: false,
       nextId: 1,
       factories: [], npzs: [], azsList: [], shops: [],
       pvos: [], interceptors: [],
-      drones: [], vehicles: [], explosions: [],
+      drones: [], vehicles: [], explosions: [], popups: [],
     };
   }
 
@@ -422,11 +316,16 @@
     state.explosions.push({ x, y, life: 0, maxLife: 0.5, size, color });
   }
 
-  function destroyDrone(drone, bounty) {
+  function addPopup(x, y, text, color) {
+    state.popups.push({ x, y, text, color, life: 0, maxLife: 0.9 });
+  }
+
+  function destroyDrone(drone) {
     drone.alive = false;
-    state.money += bounty;
-    state.totalEarned += bounty;
+    state.money += KILL_BOUNTY;
+    state.totalEarned += KILL_BOUNTY;
     addExplosion(drone.x, drone.y, 26, "#ffd54a");
+    addPopup(drone.x, drone.y - 10, `+${KILL_BOUNTY}`, "#ffd54a");
   }
 
   // ---------- spawning ----------
@@ -435,8 +334,9 @@
     const y = TOP_MARGIN + 40 + Math.random() * (H - TOP_MARGIN - BOTTOM_MARGIN - 80);
     const x = 30;
     const wave = state.wave;
-    const speed = Math.min(70 + wave * 4, 170);
-    const hp = 55 + wave * 7;
+    const diff = state.diff;
+    const speed = Math.min(diff.speedBase + wave * diff.speedPerWave, diff.speedCap);
+    const hp = diff.hpBase + wave * diff.hpPerWave;
 
     const candidates = [];
     for (const b of state.npzs) candidates.push({ kind: "npz", b, w: 5 });
@@ -479,7 +379,7 @@
     state.waveTimer -= dt;
     if (state.waveTimer <= 0) {
       state.wave += 1;
-      state.waveTimer = 25;
+      state.waveTimer = state.diff.waveInterval;
       showBanner(`Волна ${state.wave}!`);
     }
 
@@ -487,7 +387,8 @@
     if (state.spawnTimer <= 0) {
       if (economyCount() > 0) {
         spawnDrone();
-        const base = Math.max(0.9, 3.2 - state.wave * 0.15);
+        const diff = state.diff;
+        const base = Math.max(diff.spawnMin, diff.spawnBase - state.wave * diff.spawnPerWave);
         state.spawnTimer = base * (0.7 + Math.random() * 0.6);
       } else {
         state.spawnTimer = 0.5;
@@ -599,7 +500,7 @@
         if (dist <= p.range) {
           d.hp -= p.dps * dt * scale;
           firing = true;
-          if (d.hp <= 0) destroyDrone(d, BOUNTY_PVO);
+          if (d.hp <= 0) destroyDrone(d);
         }
       }
       if (firing) p.fireFx = 0.1;
@@ -648,7 +549,7 @@
           const dist = Math.hypot(dx, dy);
           it.angle = Math.atan2(dy, dx);
           if (dist <= it.killRange) {
-            destroyDrone(target, BOUNTY_INTERCEPTOR);
+            destroyDrone(target);
             it.state = "cooldown"; it.cooldown = 2.0; it.targetId = null;
           } else {
             it.x += (dx / dist) * it.speed * dt;
@@ -671,6 +572,8 @@
     state.drones = state.drones.filter(d => d.alive);
     for (const e of state.explosions) e.life += dt;
     state.explosions = state.explosions.filter(e => e.life < e.maxLife);
+    for (const p of state.popups) { p.life += dt; p.y -= dt * 26; }
+    state.popups = state.popups.filter(p => p.life < p.maxLife);
 
     if (state.hadEconomy && economyCount() === 0 && state.money < COSTS.factory) {
       state.gameOver = true;
@@ -958,6 +861,16 @@
     }
   }
 
+  function drawPopups() {
+    ctx.textAlign = "center";
+    ctx.font = "bold 14px sans-serif";
+    for (const p of state.popups) {
+      const t = p.life / p.maxLife;
+      ctx.fillStyle = withAlpha(p.color, 1 - t);
+      ctx.fillText(p.text, p.x, p.y);
+    }
+  }
+
   function render() {
     drawMap();
     drawPvos();
@@ -969,6 +882,7 @@
     drawInterceptors();
     drawDrones();
     drawExplosions();
+    drawPopups();
     drawPlacementPreview();
   }
 
@@ -1027,11 +941,18 @@
 
   btnStart.addEventListener("click", () => {
     introEl.style.display = "none";
+    resetGame();
     started = true;
     paused = false;
   });
 
-  buildMap();
+  for (const key in diffButtons) {
+    diffButtons[key].addEventListener("click", () => {
+      selectedDifficulty = key;
+      for (const k in diffButtons) diffButtons[k].classList.toggle("selected", k === key);
+    });
+  }
+
   resetGame();
   requestAnimationFrame(loop);
 })();
