@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Deeps — AI чат</title>
+<meta name="description" content="Deeps — чат с DeepSeek и другими моделями через свой API-ключ: поиск, thinking-режимы, live build сайтов, GitHub." />
+<link rel="icon" href="assets/logo.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="app-shell">
+
+  <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+  <aside id="sidebar">
+    <div class="sidebar__header">
+      <img src="assets/logo.png" alt="Deeps" />
+      <h1>Deeps</h1>
+      <button class="icon-btn sidebar__close" id="sidebar-close" title="Закрыть">✕</button>
+    </div>
+    <div class="sidebar__new">
+      <button class="btn btn--primary" id="new-chat-btn">+ Новый чат</button>
+    </div>
+    <div class="sidebar__search">
+      <input type="text" class="input" id="chat-search" placeholder="Поиск по чатам…" />
+    </div>
+    <div id="chat-list"></div>
+    <div class="sidebar__footer">
+      <button class="icon-btn" id="settings-btn" title="Настройки">⚙️</button>
+      <button class="icon-btn" id="export-btn" title="Экспорт чата в .txt">⬇️</button>
+      <button class="icon-btn" id="github-btn" title="GitHub">🐙</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <header id="topbar">
+      <button class="icon-btn sidebar-toggle" id="sidebar-open" title="Чаты">☰</button>
+      <select id="model-select" class="input"></select>
+
+      <div class="mode-group" id="search-mode-group" title="Поиск в интернете">
+        <button class="btn btn--sm btn--toggle" data-search-mode="off">Без поиска</button>
+        <button class="btn btn--sm btn--toggle" data-search-mode="normal">🔎 Поиск</button>
+        <button class="btn btn--sm btn--toggle" data-search-mode="deep">🔬 Глубокий</button>
+      </div>
+
+      <div class="mode-group" id="thinking-mode-group" title="Режим рассуждения">
+        <button class="btn btn--sm btn--toggle" data-thinking-mode="off">Обычный</button>
+        <button class="btn btn--sm btn--toggle" data-thinking-mode="thinking">🧠 Thinking</button>
+        <button class="btn btn--sm btn--toggle" data-thinking-mode="thinkingPlus">🧠+ Thinking+</button>
+      </div>
+
+      <button class="btn btn--sm btn--toggle" id="livebuild-toggle" title="Собрать сайт/проект и получить zip">🛠️ Live Build</button>
+
+      <span class="chat-title" id="chat-title-label">Новый чат</span>
+    </header>
+
+    <div id="messages"></div>
+
+    <div id="attach-preview"></div>
+
+    <div id="composer">
+      <button class="icon-btn" id="attach-btn" title="Прикрепить изображение (vision)">📎</button>
+      <input type="file" id="attach-input" accept="image/*" hidden />
+      <textarea id="composer-input" class="input" rows="1" placeholder="Напиши сообщение… (Shift+Enter — новая строка)"></textarea>
+      <button class="btn btn--primary" id="send-btn">Отправить</button>
+    </div>
+  </main>
+
+  <aside id="livepanel">
+    <div class="livepanel__header">
+      <strong>Live Build</strong>
+      <span style="flex:1"></span>
+      <button class="icon-btn" id="livepanel-close" title="Закрыть">✕</button>
+    </div>
+    <div class="livepanel__tabs">
+      <button class="btn btn--sm btn--toggle is-active" data-live-tab="preview">Превью</button>
+      <button class="btn btn--sm btn--toggle" data-live-tab="files">Файлы</button>
+    </div>
+    <div class="file-pill-row" id="live-file-pills" style="display:none"></div>
+    <div class="livepanel__body" id="livepanel-body">
+      <div style="padding:16px;color:var(--text-dim);font-size:13px;">Здесь появится превью сгенерированного сайта, когда модель вернёт файлы проекта.</div>
+    </div>
+    <div class="livepanel__actions">
+      <button class="btn btn--primary btn--sm" id="live-download-zip">⬇️ Скачать .zip</button>
+      <button class="btn btn--sm" id="live-push-github">🐙 Запушить в GitHub</button>
+    </div>
+  </aside>
+
+</div>
+
+<div id="toast-host"></div>
+
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
