@@ -248,7 +248,7 @@
       state.hadEconomy = true;
     } else if (mode === "pvo") {
       state.pvos.push({
-        id, x, y, range: 135, dps: 62, fireFx: 0, online: true,
+        id, x, y, range: 115, dps: 72, fireFx: 0, online: true,
         fuel: PVO_FUEL_CAP, fuelCap: PVO_FUEL_CAP,
       });
     } else if (mode === "interceptor") {
@@ -842,7 +842,7 @@
     };
     if (selectedMode === "pvo") {
       ctx.beginPath();
-      ctx.arc(mouse.x, mouse.y, 135, 0, Math.PI * 2);
+      ctx.arc(mouse.x, mouse.y, 115, 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(255,157,74,0.4)";
       ctx.stroke();
     } else if (selectedMode === "interceptor") {
