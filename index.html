@@ -60,6 +60,8 @@
   .stat.money .value { color: var(--money); font-weight: 700; }
   .stat.wave .value { color: var(--accent); font-weight: 700; }
   .stat.factories .value { color: var(--good); font-weight: 700; }
+  .stat.fuel .value { color: #ff9d4a; font-weight: 700; }
+  .stat.fuel .value.low { color: var(--danger); }
   .spacer { flex: 1; }
   .build-bar {
     display: flex;
@@ -86,6 +88,7 @@
   button.build-btn:hover { background: #24314455; border-color: var(--accent); }
   button.build-btn.selected { background: #1e3a5f; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   button.build-btn:disabled { opacity: .4; cursor: not-allowed; }
+  button.build-btn { min-width: 74px; padding: 6px 9px; }
   button.plain-btn {
     background: #1b2330;
     border: 1px solid var(--panel-border);
@@ -198,12 +201,22 @@
   <header>
     <h1>🛰 Небесный рубеж</h1>
     <div class="stat money"><span class="label">💰</span><span class="value" id="moneyVal">0</span></div>
+    <div class="stat fuel"><span class="label">⛽</span><span class="value" id="fuelVal">0/0</span></div>
     <div class="stat wave"><span class="label">Волна</span><span class="value" id="waveVal">1</span></div>
-    <div class="stat factories"><span class="label">Заводы</span><span class="value" id="factoriesVal">0</span></div>
+    <div class="stat factories"><span class="label">Экономика</span><span class="value" id="factoriesVal">0</span></div>
     <div class="spacer"></div>
     <div class="build-bar">
       <button class="build-btn" id="btnFactory" data-mode="factory">
         <span class="name">🏭 Завод</span><span class="cost">150</span>
+      </button>
+      <button class="build-btn" id="btnNpz" data-mode="npz">
+        <span class="name">🛢 НПЗ</span><span class="cost">550</span>
+      </button>
+      <button class="build-btn" id="btnAzs" data-mode="azs">
+        <span class="name">⛽ АЗС</span><span class="cost">220</span>
+      </button>
+      <button class="build-btn" id="btnShop" data-mode="shop">
+        <span class="name">🏬 Магазин</span><span class="cost">180</span>
       </button>
       <button class="build-btn" id="btnPvo" data-mode="pvo">
         <span class="name">📡 ПВО</span><span class="cost">250</span>
@@ -220,7 +233,7 @@
     <div id="banner"></div>
     <div id="hint">Выберите постройку сверху и кликните по карте России, чтобы разместить</div>
     <div id="overlay">
-      <h2>Все заводы уничтожены</h2>
+      <h2>Экономика рухнула</h2>
       <p class="score" id="finalScore"></p>
       <button class="plain-btn" id="btnRestart2">↺ Начать заново</button>
     </div>
@@ -228,11 +241,12 @@
       <div class="card">
         <h2>🛰 Небесный рубеж</h2>
         <ul>
-          <li><b class="factory">🏭 Завод</b> — приносит доход каждую секунду. Это ваша цель, которую защищают враги.</li>
-          <li><b class="drone">🔺 Дрон</b> — летит со стороны Украины к случайному заводу. Долетит — завод будет уничтожен.</li>
-          <li><b class="pvo">📡 ПВО</b> — стационарная точка. Бьёт по всем дронам в своём круге поражения.</li>
-          <li><b class="interceptor">✈ Истребитель</b> — летает и сам преследует дроны в радиусе обнаружения, догоняет и сбивает.</li>
-          <li>Зарабатывайте на заводах и стройте оборону — волны дронов со временем усиливаются.</li>
+          <li><b class="factory">🛢 НПЗ</b> — самое дорогое и важное здание. Производит топливо и возит его бензовозами на АЗС. Цель №1 для дронов.</li>
+          <li><b class="pvo">⛽ АЗС</b> — хранит топливо. Без него грузовики не поедут, а ПВО и истребители встанут. Цель №2 для дронов.</li>
+          <li><b class="factory">🏭 Завод → 🏬 Магазин</b> — завод отправляет гружёные машины в магазин (заправляясь на АЗС), доставка приносит основные деньги.</li>
+          <li><b class="drone">🔺 Дрон FP-1</b> — летит со стороны Украины, в первую очередь на НПЗ и АЗС. Долетел — здание уничтожено.</li>
+          <li><b class="pvo">📡 ПВО</b> и <b class="interceptor">✈ Истребитель</b> — сбивают дроны, но сами жгут топливо с ближайшей АЗС. Кончилось топливо — не стреляют и не летают.</li>
+          <li>Порвётся любое звено цепочки НПЗ→АЗС→грузовики — экономика посыплется. Стройте с запасом.</li>
         </ul>
         <button class="plain-btn" id="btnStart" style="width:100%;font-size:15px;padding:12px;">Начать игру</button>
       </div>
