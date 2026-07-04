@@ -3,8 +3,14 @@
 
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
-  const W = canvas.width;
-  const H = canvas.height;
+  const wrapEl = document.getElementById("wrap");
+  let W = canvas.width;
+  let H = canvas.height;
+
+  function resizeCanvas() {
+    W = canvas.width = wrapEl.clientWidth;
+    H = canvas.height = wrapEl.clientHeight;
+  }
 
   const TOP_MARGIN = 30;
   const BOTTOM_MARGIN = 30;
@@ -955,7 +961,7 @@
   }
 
   function drawPlacementPreview() {
-    if (!selectedMode || mouse.x < 0) return;
+    if (!selectedMode || mouse.x < -9000) return;
     const ok = canPlaceAt(mouse.x, mouse.y) && state.money >= COSTS[selectedMode];
     ctx.beginPath();
     ctx.arc(mouse.x, mouse.y, 18, 0, Math.PI * 2);
@@ -997,6 +1003,14 @@
     }
   }
 
+  function drawFieldBounds() {
+    ctx.setLineDash([12, 9]);
+    ctx.strokeStyle = "rgba(31,111,214,0.4)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(30, TOP_MARGIN + 10, W - 60, H - TOP_MARGIN - BOTTOM_MARGIN - 20);
+    ctx.setLineDash([]);
+  }
+
   function render() {
     ctx.clearRect(0, 0, W, H);
     if (!started) return;
@@ -1007,6 +1021,7 @@
     ctx.scale(t.scale, t.scale);
     ctx.translate(-W / 2, -H / 2);
 
+    drawFieldBounds();
     drawPvos();
     drawNpzs();
     drawAzsList();
@@ -1072,7 +1087,12 @@
 
   function doRestart() {
     resetGame();
-    if (pickedRegion) state.approachBearing = bearingTo(pickedRegion, UKRAINE_CENTER);
+    if (pickedRegion) {
+      state.approachBearing = bearingTo(pickedRegion, UKRAINE_CENTER);
+      state.lockedCenter = { lat: pickedRegion.lat, lng: pickedRegion.lng };
+      state.lockedZoom = GAMEPLAY_ZOOM;
+      leafletMap.setView([pickedRegion.lat, pickedRegion.lng], GAMEPLAY_ZOOM);
+    }
     paused = false;
     btnPause.textContent = "⏸ Пауза";
   }
@@ -1092,6 +1112,8 @@
     });
   }
 
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
   resetGame();
   requestAnimationFrame(loop);
 })();
