@@ -107,8 +107,9 @@
     zoomControl: true, attributionControl: true,
     minZoom: 3, maxZoom: 13,
   }).setView([61, 70], 3);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "© OpenStreetMap contributors",
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: "© OpenStreetMap contributors © CARTO",
+    subdomains: "abcd",
     maxZoom: 19,
   }).addTo(leafletMap);
 
