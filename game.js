@@ -10,6 +10,7 @@
   function resizeCanvas() {
     W = canvas.width = wrapEl.clientWidth;
     H = canvas.height = wrapEl.clientHeight;
+    leafletMap.invalidateSize();
   }
 
   const TOP_MARGIN = 30;
@@ -187,6 +188,7 @@
     subdomains: "abcd",
     maxZoom: 19,
   }).addTo(leafletMap);
+  leafletMap.attributionControl.setPrefix(false); // drop the "Leaflet" logo/link, keep only the OSM/CARTO credit text
 
   const pinIcon = L.divIcon({ className: "region-pin", iconSize: [14, 14] });
   let pickedRegion = null;
